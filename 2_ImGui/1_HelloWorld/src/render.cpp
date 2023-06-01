@@ -14,11 +14,10 @@ void WindowClass::Draw(std::string_view label)
     constexpr static auto windowSize = ImVec2(1280.0F, 720.0F);
     constexpr static auto windowPos = ImVec2(0.0F, 0.0F);
 
-    ImGui::SetNextWindowSize(ImVec2(1280.0F, 720.0F));
-    ImGui::SetNextWindowPos(ImVec2(0.0F, 0.0F));
+    ImGui::SetNextWindowSize(windowSize);
+    ImGui::SetNextWindowPos(windowPos);
 
     ImGui::Begin(label.data(), nullptr, windowFlags);
-
 
     ImGui::End();
 }
