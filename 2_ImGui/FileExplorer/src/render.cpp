@@ -60,16 +60,14 @@ void WindowClass::DrawContent()
         auto entry_name = entry.path().filename().string();
 
         if (is_directory)
-            entry_name = "[D] " + entry_name;
-        if (is_file)
-            entry_name = "[F] " + entry_name;
+            entry_name = "[D]" + entry_name;
+        else if (is_file)
+            entry_name = "[F]" + entry_name;
 
         if (ImGui::Selectable(entry_name.c_str(), is_selected))
         {
             if (is_directory)
-            {
                 currentPath /= entry.path().filename();
-            }
 
             selectedEntry = entry.path();
         }
@@ -92,26 +90,74 @@ void WindowClass::DrawActions()
         return;
     }
 
-    if (fs::is_regular_file(selectedEntry))
-    {
-        if (ImGui::Button("Open"))
-            openFileWithDefaultEditor(selectedEntry);
+    if (fs::is_regular_file(selectedEntry) && ImGui::Button("Open"))
+        openFileWithDefaultEditor();
 
-        ImGui::SameLine();
-    }
+    ImGui::SameLine();
 
     if (ImGui::Button("Rename"))
+    {
         renameDialogOpen = true;
-
-    if (renameDialogOpen)
         ImGui::OpenPopup("Rename File");
+    }
 
+    ImGui::SameLine();
+
+    if (ImGui::Button("Delete"))
+    {
+        deleteDialogOpen = true;
+        ImGui::OpenPopup("Delete File");
+    }
+
+    renameFilePopup();
+    deleteFilePopup();
+}
+
+void WindowClass::DrawFilter()
+{
+    static char extension_filter[16] = {"\0"};
+
+    ImGui::Text("Filter by extension");
+    ImGui::SameLine();
+    ImGui::InputText("###inFilter", extension_filter, sizeof(extension_filter));
+
+    if (std::strlen(extension_filter) == 0)
+        return;
+
+    auto filtered_file_count = std::size_t{0};
+    for (const auto &entry : fs::directory_iterator(currentPath))
+    {
+        if (!fs::is_regular_file(entry))
+            continue;
+
+        if (entry.path().extension().string() == extension_filter)
+            ++filtered_file_count;
+    }
+
+    ImGui::Text("Number of files: %u", filtered_file_count);
+}
+
+void WindowClass::openFileWithDefaultEditor()
+{
+#ifdef _WIN32
+    const auto command = "start \"\" \"" + selectedEntry.string() + "\"";
+#elif __APPLE__
+    const auto command = "open \"" + selectedEntry.string() + "\"";
+#else
+    const auto command = "xdg-open \"" + selectedEntry.string() + "\"";
+#endif
+
+    std::system(command.c_str());
+}
+
+void WindowClass::renameFilePopup()
+{
     if (ImGui::BeginPopupModal("Rename File", &renameDialogOpen))
     {
         static char buffer_name[512] = {'\0'};
 
         ImGui::Text("New name: ");
-        ImGui::InputText("###NewName", buffer_name, sizeof(buffer_name));
+        ImGui::InputText("###newName", buffer_name, sizeof(buffer_name));
 
         if (ImGui::Button("Rename"))
         {
@@ -131,15 +177,10 @@ void WindowClass::DrawActions()
 
         ImGui::EndPopup();
     }
+}
 
-    ImGui::SameLine();
-
-    if (ImGui::Button("Delete"))
-        deleteDialogOpen = true;
-
-    if (deleteDialogOpen)
-        ImGui::OpenPopup("Delete File");
-
+void WindowClass::deleteFilePopup()
+{
     if (ImGui::BeginPopupModal("Delete File", &deleteDialogOpen))
     {
         ImGui::Text("Are you sure you want to delete %s?",
@@ -161,48 +202,11 @@ void WindowClass::DrawActions()
     }
 }
 
-void WindowClass::DrawFilter()
-{
-    static char extension_filter[16] = {"\0"};
-
-    auto filtered_file_count = 0;
-    ImGui::Text("Filter by extension");
-    ImGui::SameLine();
-    ImGui::InputText("###inFilter", extension_filter, sizeof(extension_filter));
-
-    if (std::strlen(extension_filter) == 0)
-        return;
-
-    for (const auto &entry : fs::directory_iterator(currentPath))
-    {
-        if (!fs::is_regular_file(entry))
-            continue;
-
-        if (entry.path().extension().string() == extension_filter)
-            filtered_file_count++;
-    }
-
-    ImGui::Text("Number of files: %d", filtered_file_count);
-}
-
-void WindowClass::openFileWithDefaultEditor(const fs::path &filePath)
-{
-#ifdef _WIN32
-    const auto command = "start \"\" \"" + filePath.string() + "\"";
-#elif __APPLE__
-    const auto command = "open \"" + filePath.string() + "\"";
-#else
-    const auto command = "xdg-open \"" + filePath.string() + "\"";
-#endif
-
-    std::system(command.c_str());
-}
-
-bool WindowClass::renameFile(const fs::path &oldPath, const fs::path &newPath)
+bool WindowClass::renameFile(const fs::path &old_path, const fs::path &new_path)
 {
     try
     {
-        fs::rename(oldPath, newPath);
+        fs::rename(old_path, new_path);
         return true;
     }
     catch (const std::exception &e)
@@ -226,7 +230,7 @@ bool WindowClass::deleteFile(const fs::path &path)
     }
 }
 
-void render(WindowClass &window_class)
+void render(WindowClass &window_obj)
 {
-    window_class.Draw("File Explorer Tool");
+    window_obj.Draw("File Explorer Tool");
 }

@@ -14,21 +14,25 @@ public:
         : currentPath(fs::current_path()), selectedEntry(fs::path{}){};
 
     void Draw(std::string_view label);
+
+private:
     void DrawMenu();
     void DrawContent();
     void DrawActions();
     void DrawFilter();
 
-private:
-    void openFileWithDefaultEditor(const fs::path &filePath);
-    bool renameFile(const fs::path &oldPath, const fs::path &newPath);
+    void openFileWithDefaultEditor();
+    void renameFilePopup();
+    void deleteFilePopup();
+    bool renameFile(const fs::path &old_path, const fs::path &new_path);
     bool deleteFile(const fs::path &path);
 
 private:
     fs::path currentPath;
     fs::path selectedEntry;
+
     bool renameDialogOpen = false;
     bool deleteDialogOpen = false;
 };
 
-void render(WindowClass &window_class);
+void render(WindowClass &window_obj);
