@@ -1,5 +1,6 @@
 #include <array>
 #include <cmath>
+#include <iostream>
 #include <set>
 #include <string_view>
 
@@ -11,14 +12,6 @@
 
 void WindowClass::Draw(std::string_view label)
 {
-    static constexpr auto num_points = 10'000;
-    static constexpr auto x_min = -100.0;
-    static constexpr auto x_max = 100.0;
-    static const auto x_step = (std::abs(x_max) + std::abs(x_min)) / num_points;
-
-    static auto xs = std::array<double, num_points>{};
-    static auto ys = std::array<double, num_points>{};
-
     constexpr static auto window_flags =
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
@@ -30,10 +23,19 @@ void WindowClass::Draw(std::string_view label)
 
     ImGui::Begin(label.data(), nullptr, window_flags);
 
+    DrawSelection();
+    DrawPlot();
+
+    ImGui::End();
+}
+
+void WindowClass::DrawSelection()
+{
     for (const auto func_name : functionNames)
     {
         const auto curr_function = functionNameMapping(func_name);
         auto selected = selectedFunctions.contains(curr_function);
+
         if (ImGui::Checkbox(func_name.data(), &selected))
         {
             if (selected)
@@ -42,6 +44,17 @@ void WindowClass::Draw(std::string_view label)
                 selectedFunctions.erase(curr_function);
         }
     }
+}
+
+void WindowClass::DrawPlot()
+{
+    static constexpr auto num_points = 10'000;
+    static constexpr auto x_min = -100.0;
+    static constexpr auto x_max = 100.0;
+    static const auto x_step = (std::abs(x_max) + std::abs(x_min)) / num_points;
+
+    static auto xs = std::array<double, num_points>{};
+    static auto ys = std::array<double, num_points>{};
 
     if (selectedFunctions.size() == 0 ||
         (selectedFunctions.size() == 1 &&
@@ -49,8 +62,6 @@ void WindowClass::Draw(std::string_view label)
     {
         ImPlot::BeginPlot("###plot", ImVec2(-1.0F, -1.0F), ImPlotFlags_NoTitle);
         ImPlot::EndPlot();
-        ImGui::End();
-
         return;
     }
 
@@ -72,8 +83,18 @@ void WindowClass::Draw(std::string_view label)
     }
 
     ImPlot::EndPlot();
+}
 
-    ImGui::End();
+WindowClass::Function WindowClass::functionNameMapping(
+    std::string_view function_name)
+{
+    if (std::string_view{"sin(x)"} == function_name)
+        return WindowClass::Function::SIN;
+
+    if (std::string_view{"cos(x)"} == function_name)
+        return WindowClass::Function::COS;
+
+    return WindowClass::Function::NONE;
 }
 
 double WindowClass::evaluateFunction(const Function function, const double x)
@@ -90,23 +111,13 @@ double WindowClass::evaluateFunction(const Function function, const double x)
     }
     case Function::NONE:
     default:
+    {
         return 0.0;
+    }
     }
 }
 
-WindowClass::Function WindowClass::functionNameMapping(
-    std::string_view function_name)
+void render(WindowClass &window_obj)
 {
-    if (std::string_view{"sin(x)"} == function_name)
-        return WindowClass::Function::SIN;
-
-    if (std::string_view{"cos(x)"} == function_name)
-        return WindowClass::Function::COS;
-
-    return WindowClass::Function::NONE;
-}
-
-void render(WindowClass &window_class)
-{
-    window_class.Draw("Calculator Tool");
+    window_obj.Draw("Calculator Tool");
 }
