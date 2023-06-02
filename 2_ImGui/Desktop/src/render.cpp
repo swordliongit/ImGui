@@ -8,12 +8,12 @@
 
 void WindowClass::Draw(std::string_view label)
 {
-    ImGui::SetNextWindowSize(windowSize);
-    ImGui::SetNextWindowPos(windowPos);
+    ImGui::SetNextWindowSize(window_size);
+    ImGui::SetNextWindowPos(window_pos);
 
     ImGui::Begin(label.data(),
                  nullptr,
-                 windowFlags | ImGuiWindowFlags_NoInputs);
+                 window_flags | ImGuiWindowFlags_NoInputs);
 
     DrawDesktop();
     DrawTaskbar();
@@ -34,7 +34,7 @@ void WindowClass::DrawTaskbar()
     ImGui::SetNextWindowPos(ImVec2(0.0F, 680.0F), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(1280.0F, 40.0F), ImGuiCond_Always);
 
-    ImGui::Begin("Taskbar", NULL, windowFlags);
+    ImGui::Begin("Taskbar", NULL, window_flags);
 
     if (ImGui::Button("All Icons", ImVec2(100, 30)))
     {
