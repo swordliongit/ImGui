@@ -9,9 +9,9 @@ public:
     static constexpr auto bufferSize = 1024;
 
 public:
-    WindowClass() : textBuffer({}), currentFilename({})
+    WindowClass() : currentFilename({})
     {
-        textBuffer.reserve(bufferSize);
+        std::memset(textBuffer, 0, bufferSize);
     }
 
     void Draw(std::string_view label);
@@ -20,7 +20,7 @@ public:
     std::string GetFileExtension(std::string_view filename);
 
 private:
-    std::string textBuffer;
+    char textBuffer[bufferSize];
     std::string currentFilename;
 
     constexpr static auto popUpFlags =

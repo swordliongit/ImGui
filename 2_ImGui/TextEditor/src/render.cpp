@@ -109,7 +109,7 @@ void WindowClass::Draw(std::string_view label)
     ImGui::BeginChild("LineNumbers", ImVec2(30.0F, 625.0F));
 
     const auto line_count =
-        std::count(textBuffer.begin(), textBuffer.end(), '\n') + 1;
+        std::count(textBuffer, textBuffer + bufferSize, '\n') + 1;
 
     for (auto i = 1; i <= line_count; ++i)
     {
@@ -121,7 +121,8 @@ void WindowClass::Draw(std::string_view label)
     ImGui::SameLine();
 
     ImGui::InputTextMultiline("###inputField",
-                              &textBuffer,
+                              textBuffer,
+                              bufferSize,
                               ImVec2(1200.0F, 625.0F),
                               input_flags);
 
