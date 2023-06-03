@@ -204,5 +204,5 @@ std::string WindowClass::GetFileExtension(std::string_view filename)
 
 void render(WindowClass &window_obj)
 {
-    window_obj.Draw("Label");
+    window_obj.Draw("Text Editor");
 }
