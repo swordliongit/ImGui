@@ -1,13 +1,14 @@
 #include <algorithm>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <string_view>
 
 #include <fmt/format.h>
 #include <imgui.h>
-#include <imgui_stdlib.h>
 #include <implot.h>
 
 #include "render.hpp"
@@ -16,19 +17,6 @@ namespace fs = std::filesystem;
 
 void WindowClass::Draw(std::string_view label)
 {
-    static constexpr auto input_flags =
-        (ImGuiInputTextFlags_AllowTabInput |
-         ImGuiInputTextFlags_NoHorizontalScroll);
-
-    static char saveFilenameBuffer[512] = "text.txt";
-    static char loadFilenameBuffer[512] = "text.txt";
-
-    const auto ctrl_pressed = ImGui::GetIO().KeyCtrl;
-    const auto esc_pressed =
-        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
-    const auto s_pressed = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_S));
-    const auto l_pressed = ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_L));
-
     constexpr static auto window_flags =
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
@@ -39,6 +27,21 @@ void WindowClass::Draw(std::string_view label)
     ImGui::SetNextWindowPos(window_pos);
 
     ImGui::Begin(label.data(), nullptr, window_flags);
+
+    DrawMenu();
+    DrawContent();
+    DrawInfo();
+
+    ImGui::End();
+}
+
+void WindowClass::DrawMenu()
+{
+    const auto ctrl_pressed = ImGui::GetIO().KeyCtrl;
+    const auto s_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
+    const auto l_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
 
     if (ImGui::Button("Save") || (ctrl_pressed && s_pressed))
     {
@@ -52,17 +55,32 @@ void WindowClass::Draw(std::string_view label)
         ImGui::OpenPopup("Load File");
     }
 
+    ImGui::SameLine();
+
+    if (ImGui::Button("Clear"))
+    {
+        std::memset(textBuffer, 0, bufferSize);
+    }
+
+    DrawSavePopup();
+    DrawLoadPopup();
+}
+
+void WindowClass::DrawSavePopup()
+{
+    static char saveFilenameBuffer[256] = "text.txt";
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
+
     ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+    ImGui::SetNextWindowPos(popUpPos);
     if (ImGui::BeginPopupModal("Save File", nullptr, popUpFlags))
     {
         ImGui::InputText("Filename",
                          saveFilenameBuffer,
                          sizeof(saveFilenameBuffer));
 
-        if (ImGui::Button("Save", ImVec2(120.0F, 0.0F)))
+        if (ImGui::Button("Save", popUpButtonSize))
         {
             SaveToFile(saveFilenameBuffer);
             currentFilename = saveFilenameBuffer;
@@ -71,25 +89,30 @@ void WindowClass::Draw(std::string_view label)
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Cancel", ImVec2(120.0F, 0.0F)) || esc_pressed)
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
         {
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::EndPopup();
     }
+}
+
+void WindowClass::DrawLoadPopup()
+{
+    static char loadFilenameBuffer[256] = "text.txt";
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
 
     ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+    ImGui::SetNextWindowPos(popUpPos);
     if (ImGui::BeginPopupModal("Load File", nullptr, popUpFlags))
     {
         ImGui::InputText("Filename",
                          loadFilenameBuffer,
                          sizeof(loadFilenameBuffer));
 
-        if (ImGui::Button("Load", ImVec2(120.0F, 0.0F)))
+        if (ImGui::Button("Load", popUpButtonSize))
         {
             LoadFromFile(loadFilenameBuffer);
             currentFilename = loadFilenameBuffer;
@@ -98,23 +121,30 @@ void WindowClass::Draw(std::string_view label)
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Cancel", ImVec2(120.0F, 0.0F)) || esc_pressed)
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
         {
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::EndPopup();
     }
+}
 
-    ImGui::BeginChild("LineNumbers", ImVec2(30.0F, 625.0F));
+void WindowClass::DrawContent()
+{
+    static constexpr auto inputTextSize = ImVec2(1200.0F, 625.0F);
+    static constexpr auto lineNumberSize = ImVec2(30.0F, inputTextSize.y);
+    static constexpr auto inputTextFlags =
+        ImGuiInputTextFlags_AllowTabInput |
+        ImGuiInputTextFlags_NoHorizontalScroll;
+
+    ImGui::BeginChild("LineNumbers", lineNumberSize);
 
     const auto line_count =
         std::count(textBuffer, textBuffer + bufferSize, '\n') + 1;
 
     for (auto i = 1; i <= line_count; ++i)
-    {
         ImGui::Text("%d", i);
-    }
 
     ImGui::EndChild();
 
@@ -123,33 +153,27 @@ void WindowClass::Draw(std::string_view label)
     ImGui::InputTextMultiline("###inputField",
                               textBuffer,
                               bufferSize,
-                              ImVec2(1200.0F, 625.0F),
-                              input_flags);
-
-    if (currentFilename.size() > 0)
-    {
-        const auto file_extension = GetFileExtension(currentFilename);
-        ImGui::Text("Opened file %s | File Extension: %s",
-                    currentFilename.data(),
-                    file_extension.data());
-    }
-    else
-        ImGui::Text("No file opened!");
-
-    ImGui::End();
+                              inputTextSize,
+                              inputTextFlags);
 }
 
-std::string WindowClass::GetFileExtension(std::string_view filename)
+void WindowClass::DrawInfo()
 {
-    const auto file_path = fs::path(filename);
-    const auto file_extension = file_path.extension().string();
+    if (currentFilename.size() == 0)
+    {
+        ImGui::Text("No File Opened!");
+        return;
+    }
 
-    return file_extension;
+    const auto file_extension = GetFileExtension(currentFilename);
+    ImGui::Text("Opened file %s | File extension %s",
+                currentFilename.data(),
+                file_extension.data());
 }
 
 void WindowClass::SaveToFile(std::string_view filename)
 {
-    auto out = std::ofstream(filename.data());
+    auto out = std::ofstream{filename.data()};
 
     if (out.is_open())
     {
@@ -160,18 +184,25 @@ void WindowClass::SaveToFile(std::string_view filename)
 
 void WindowClass::LoadFromFile(std::string_view filename)
 {
-    auto in = std::ifstream(filename.data());
+    auto in = std::ifstream{filename.data()};
 
     if (in.is_open())
     {
         auto buffer = std::stringstream{};
         buffer << in.rdbuf();
-        textBuffer = buffer.str();
+        std::memcpy(textBuffer, buffer.str().data(), bufferSize);
         in.close();
     }
 }
 
-void render(WindowClass &window_class)
+std::string WindowClass::GetFileExtension(std::string_view filename)
 {
-    window_class.Draw("Text Editor");
+    const auto file_path = fs::path{filename};
+
+    return file_path.extension().string();
+}
+
+void render(WindowClass &window_obj)
+{
+    window_obj.Draw("Label");
 }
