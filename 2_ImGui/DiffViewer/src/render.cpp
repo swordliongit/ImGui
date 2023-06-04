@@ -115,8 +115,7 @@ void WindowClass::DrawDiffView()
             }
             else
             {
-                const auto cursor_pos = ImGui::GetCursorPosY();
-                ImGui::SetCursorPosY(cursor_pos + line_heihgt);
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_heihgt);
             }
         }
 
@@ -158,8 +157,7 @@ void WindowClass::DrawStats()
             ++diff_lines_count;
     }
 
-    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFontSize() -
-                         ImGui::GetStyle().FramePadding.y * 5.0F);
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 20.0F);
     ImGui::Text("Diff lines count: %d", diff_lines_count);
 }
 
