@@ -57,11 +57,13 @@ void WindowClass::DrawDiffView()
     const auto parent_size = ImVec2(ImGui::GetContentRegionAvail().x, 500.0F);
     const auto child_size = ImVec2(parent_size.x / 2.0F - 40.0F, parent_size.y);
 
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0F, 0.0F));
+
     ImGui::BeginChild("Parent", parent_size, true);
 
     if (ImGui::BeginChild("Diff1", child_size, false))
     {
-        for (std::size_t i = 0; i < fileContent1.size(); i++)
+        for (std::size_t i = 0; i < fileContent1.size(); ++i)
         {
             if (!diffResult1[i].empty())
             {
@@ -79,8 +81,43 @@ void WindowClass::DrawDiffView()
 
     ImGui::SameLine();
 
+    const auto line_height = ImGui::GetTextLineHeightWithSpacing();
+    const auto button_size = ImVec2(15.0F, line_height);
+
     if (ImGui::BeginChild("Swap"))
     {
+        for (std::size_t i = 0; i < diffResult1.size(); i++)
+        {
+            const auto left_label = fmt::format("<##{}", i);
+            const auto right_label = fmt::format(">##{}", i);
+
+            if (!diffResult1[i].empty() || !diffResult2[i].empty())
+            {
+                if (ImGui::Button(left_label.data(), button_size))
+                {
+                    if (fileContent1.size() > i && fileContent2.size() > i)
+                        fileContent1[i] = fileContent2[i];
+                    else if (fileContent2.size() > i)
+                        fileContent1.push_back(fileContent2[i]);
+                    CreateDiff();
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::Button(right_label.data(), button_size))
+                {
+                    if (fileContent1.size() > i && fileContent2.size() > i)
+                        fileContent2[i] = fileContent1[i];
+                    else if (fileContent1.size() > i)
+                        fileContent2.push_back(fileContent1[i]);
+                    CreateDiff();
+                }
+            }
+            else
+            {
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_height);
+            }
+        }
     }
     ImGui::EndChild();
 
@@ -88,7 +125,7 @@ void WindowClass::DrawDiffView()
 
     if (ImGui::BeginChild("Diff2", child_size, false))
     {
-        for (std::size_t i = 0; i < fileContent2.size(); ++i)
+        for (std::size_t i = 0; i < fileContent2.size(); i++)
         {
             if (!diffResult2[i].empty())
             {
@@ -105,6 +142,8 @@ void WindowClass::DrawDiffView()
     ImGui::EndChild();
 
     ImGui::EndChild();
+
+    ImGui::PopStyleVar();
 }
 
 void WindowClass::DrawStats()
