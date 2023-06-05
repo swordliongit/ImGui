@@ -1,6 +1,9 @@
 #include <cstdint>
 #include <fstream>
+#include <iostream>
+#include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 #include <fmt/format.h>
@@ -30,17 +33,24 @@ void WindowClass::Draw(std::string_view label)
 
 void WindowClass::DrawMenu()
 {
-    if (ImGui::Button("Save"))
+    const auto ctrl_pressed = ImGui::GetIO().KeyCtrl;
+    const auto s_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
+    const auto l_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
+
+    if (ImGui::Button("Save") || (ctrl_pressed && s_pressed))
     {
         ImGui::OpenPopup("Save Image");
     }
 
     ImGui::SameLine();
 
-    if (ImGui::Button("Load"))
+    if (ImGui::Button("Load") || (ctrl_pressed && l_pressed))
     {
         ImGui::OpenPopup("Load Image");
     }
+
     ImGui::SameLine();
 
     if (ImGui::Button("Clear"))
@@ -49,21 +59,24 @@ void WindowClass::DrawMenu()
     }
 
     DrawColorButtons();
+    DrawSizeSettings();
 
-    ImGui::Text("Draw size");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(canvasSize.x - ImGui::GetCursorPosX());
-    ImGui::SliderFloat("##drawSize", &pointDrawSize, 1.0F, 10.0F);
-    ImGui::PopItemWidth();
+    DrawSavePopup();
+    DrawLoadPopup();
+}
+
+void WindowClass::DrawSavePopup()
+{
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
 
     ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+    ImGui::SetNextWindowPos(popUpPos);
     if (ImGui::BeginPopupModal("Save Image", nullptr, popUpFlags))
     {
         ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
-        if (ImGui::Button("Save"))
+
+        if (ImGui::Button("Save", popUpButtonSize))
         {
             SaveToImageFile(filenameBuffer);
             ImGui::CloseCurrentPopup();
@@ -71,22 +84,27 @@ void WindowClass::DrawMenu()
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Cancel"))
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
         {
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::EndPopup();
     }
+}
+
+void WindowClass::DrawLoadPopup()
+{
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
 
     ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+    ImGui::SetNextWindowPos(popUpPos);
     if (ImGui::BeginPopupModal("Load Image", nullptr, popUpFlags))
     {
         ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
-        if (ImGui::Button("Load"))
+
+        if (ImGui::Button("Load", popUpButtonSize))
         {
             LoadFromImageFile(filenameBuffer);
             ImGui::CloseCurrentPopup();
@@ -94,7 +112,7 @@ void WindowClass::DrawMenu()
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Cancel"))
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
         {
             ImGui::CloseCurrentPopup();
         }
@@ -105,14 +123,16 @@ void WindowClass::DrawMenu()
 
 void WindowClass::DrawCanvas()
 {
-    canvasPos = ImGui::GetCursorScreenPos();
+    canvasPos = ImGui::GetCursorPos();
     const auto border_thickness = 1.5F;
     const auto button_size = ImVec2(canvasSize.x + 2.0F * border_thickness,
                                     canvasSize.y + 2.0F * border_thickness);
+
     ImGui::InvisibleButton("##canvas", button_size);
 
     const auto mouse_pos = ImGui::GetMousePos();
     const auto is_mouse_hovering = ImGui::IsItemHovered();
+
     if (is_mouse_hovering && ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
         const auto point = ImVec2(mouse_pos.x - canvasPos.x - border_thickness,
@@ -124,12 +144,9 @@ void WindowClass::DrawCanvas()
     auto *draw_list = ImGui::GetWindowDrawList();
     for (const auto &[point, color, size] : points)
     {
-        draw_list->AddCircleFilled(
-            ImVec2(canvasPos.x + border_thickness + point.x,
-                   canvasPos.y + border_thickness + point.y),
-            size,
-            color,
-            16);
+        const auto pos = ImVec2(canvasPos.x + border_thickness + point.x,
+                                canvasPos.y + border_thickness + point.y);
+        draw_list->AddCircleFilled(pos, size, color);
     }
 
     const auto border_min = canvasPos;
@@ -142,56 +159,6 @@ void WindowClass::DrawCanvas()
                        0.0F,
                        ImDrawCornerFlags_All,
                        border_thickness);
-}
-
-void WindowClass::SaveToImageFile(std::string_view filename)
-{
-    auto out = std::ofstream(filename.data(), std::ios::binary);
-
-    if (!out || !out.is_open())
-        return;
-
-    const auto point_count = points.size();
-    out.write(reinterpret_cast<const char *>(&point_count),
-              sizeof(point_count));
-
-    for (const auto &[point, color, size] : points)
-    {
-        out.write(reinterpret_cast<const char *>(&point), sizeof(point));
-        out.write(reinterpret_cast<const char *>(&color), sizeof(color));
-        out.write(reinterpret_cast<const char *>(&size), sizeof(size));
-    }
-
-    out.close();
-}
-
-void WindowClass::LoadFromImageFile(std::string_view filename)
-{
-    auto in = std::ifstream(filename.data(), std::ios::binary);
-
-    if (!in || !in.is_open())
-        return;
-
-    auto point_count = std::size_t{};
-    in.read(reinterpret_cast<char *>(&point_count), sizeof(point_count));
-
-    ClearCanvas();
-    points.reserve(point_count);
-
-    for (std::size_t i = 0; i < point_count; i++)
-    {
-        auto point = ImVec2{};
-        auto color = ImColor{};
-        auto size = float{};
-
-        in.read(reinterpret_cast<char *>(&point), sizeof(point));
-        in.read(reinterpret_cast<char *>(&color), sizeof(color));
-        in.read(reinterpret_cast<char *>(&size), sizeof(size));
-
-        points.push_back(std::make_tuple(point, color, size));
-    }
-
-    in.close();
 }
 
 void WindowClass::DrawColorButtons()
@@ -255,13 +222,68 @@ void WindowClass::DrawColorButtons()
         ImGui::PopStyleColor();
 }
 
+void WindowClass::DrawSizeSettings()
+{
+    ImGui::Text("Draw Size");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(canvasSize.x - ImGui::GetCursorPosX());
+    ImGui::SliderFloat("##drawSize", &pointDrawSize, 1.0F, 10.0F);
+    ImGui::PopItemWidth();
+}
+
+void WindowClass::SaveToImageFile(std::string_view filename)
+{
+    auto out = std::ofstream(filename.data(), std::ios::binary);
+
+    if (!out || !out.is_open())
+        return;
+
+    const auto point_count = points.size();
+    out.write(reinterpret_cast<const char *>(&point_count),
+              sizeof(point_count));
+
+    for (const auto &[point, color, size] : points)
+    {
+        out.write(reinterpret_cast<const char *>(&point), sizeof(point));
+        out.write(reinterpret_cast<const char *>(&color), sizeof(color));
+        out.write(reinterpret_cast<const char *>(&size), sizeof(size));
+    }
+
+    out.close();
+}
+
+void WindowClass::LoadFromImageFile(std::string_view filename)
+{
+    auto in = std::ifstream(filename.data(), std::ios::binary);
+
+    if (!in || !in.is_open())
+        return;
+
+    auto point_count = std::size_t{0};
+    in.read(reinterpret_cast<char *>(&point_count), sizeof(point_count));
+
+    for (std::size_t i = 0; i < point_count; ++i)
+    {
+        auto point = ImVec2{};
+        auto color = ImColor{};
+        auto size = float{};
+
+        in.read(reinterpret_cast<char *>(&point), sizeof(point));
+        in.read(reinterpret_cast<char *>(&color), sizeof(color));
+        in.read(reinterpret_cast<char *>(&size), sizeof(size));
+
+        points.push_back(std::make_tuple(point, color, size));
+    }
+
+    in.close();
+}
+
 void WindowClass::ClearCanvas()
 {
     points.clear();
 }
 
-
-void render(WindowClass &window_class)
+void render(WindowClass &window_obj)
 {
-    window_class.Draw("Drawing Editor");
+    window_obj.Draw("Label");
 }
