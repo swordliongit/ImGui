@@ -13,7 +13,7 @@
 class WindowClass
 {
 public:
-    static constexpr auto months = std::array<std::string_view, 12>{
+    static constexpr auto monthNames = std::array<std::string_view, 12U>{
         "January",
         "February",
         "March",
@@ -46,13 +46,14 @@ public:
 public:
     void Draw(std::string_view label);
 
-    void LoadMeetingsFromFile(std::string_view filename);
-    void SaveMeetingsToFile(std::string_view filename) const;
-
+private:
     void DrawDateCombo();
     void DrawCalender();
     void DrawAddMeetingWindow();
     void DrawMeetingList();
+
+    void LoadMeetingsFromFile(std::string_view filename);
+    void SaveMeetingsToFile(std::string_view filename);
     void UpdateSelectedDateVariables();
 
 private:

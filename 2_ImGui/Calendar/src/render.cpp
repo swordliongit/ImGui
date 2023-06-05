@@ -64,7 +64,7 @@ void WindowClass::DrawCalender()
             if (d != 1)
                 ImGui::SameLine();
             if (d == 1)
-                ImGui::Text("%s", fmt::format("{:.3}", months[m - 1]).data());
+                ImGui::Text("%s", fmt::format("{:.3}", monthNames[m - 1]).data());
             ImGui::SameLine();
 
             auto textColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -106,19 +106,19 @@ void WindowClass::DrawAddMeetingWindow()
     constexpr static auto window_flags =
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
-    constexpr static auto popUpSize = ImVec2(300.0F, 100.0F);
+    constexpr static auto window_size = ImVec2(300.0F, 100.0F);
 
     static char meeting_name_buffer[128] = "...";
 
-    ImGui::SetNextWindowSize(popUpSize);
+    ImGui::SetNextWindowSize(window_size);
     ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - window_size.x / 2.0F,
+               ImGui::GetIO().DisplaySize.y / 2.0F - window_size.y / 2.0F));
     ImGui::Begin("###addMeeting", &addMeetingWindowOpen, window_flags);
 
     ImGui::Text("Add meeting to %d.%s.%d",
                 selectedDay,
-                months[selectedMonth - 1].data(),
+                monthNames[selectedMonth - 1].data(),
                 selectedYear);
 
     ImGui::InputText("Meeting Name",
@@ -154,7 +154,7 @@ void WindowClass::DrawMeetingList()
 
     ImGui::Text("Meetins on %d.%s.%d: ",
                 selectedDay,
-                months[selectedMonth - 1].data(),
+                monthNames[selectedMonth - 1].data(),
                 selectedYear);
 
     if (meetings[selectedDate].empty())
@@ -207,11 +207,11 @@ void WindowClass::DrawDateCombo()
     ImGui::SameLine();
     ImGui::PushItemWidth(100);
 
-    if (ImGui::BeginCombo("##month", months[selectedMonth - 1].data()))
+    if (ImGui::BeginCombo("##month", monthNames[selectedMonth - 1].data()))
     {
         for (std::int32_t month_idx = 1; month_idx <= 12; ++month_idx)
         {
-            if (ImGui::Selectable(months[month_idx - 1].data(),
+            if (ImGui::Selectable(monthNames[month_idx - 1].data(),
                                   month_idx == selectedMonth))
             {
                 selectedMonth = month_idx;
@@ -252,7 +252,7 @@ void WindowClass::DrawDateCombo()
         addMeetingWindowOpen = true;
 }
 
-void WindowClass::SaveMeetingsToFile(std::string_view filename) const
+void WindowClass::SaveMeetingsToFile(std::string_view filename)
 {
     auto out = std::ofstream(filename.data(), std::ios::binary);
 
