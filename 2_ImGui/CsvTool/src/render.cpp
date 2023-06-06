@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -44,7 +45,7 @@ void WindowClass::DrawSizeButtons()
 
     ImGui::Text("Num Rows: ");
     ImGui::SameLine();
-    if (ImGui::SliderInt("##numRows", &slider_rows, 0, 30))
+    if (ImGui::SliderInt("##numRows", &slider_rows, 0, maxNumRows))
     {
         user_added_rows = slider_rows > numRows ? true : false;
         user_dropped_rows = !user_dropped_rows;
@@ -52,7 +53,7 @@ void WindowClass::DrawSizeButtons()
         numRows = slider_rows;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Add Row") && numRows < 30)
+    if (ImGui::Button("Add Row") && numRows < maxNumRows)
     {
         ++numRows;
         user_added_rows = true;
@@ -66,7 +67,7 @@ void WindowClass::DrawSizeButtons()
 
     ImGui::Text("Num Cols: ");
     ImGui::SameLine();
-    if (ImGui::SliderInt("##numCols", &slider_cols, 0, 8))
+    if (ImGui::SliderInt("##numCols", &slider_cols, 0, maxNumCols))
     {
         user_added_cols = slider_cols > numCols ? true : false;
         user_dropped_cols = !user_dropped_cols;
@@ -74,7 +75,7 @@ void WindowClass::DrawSizeButtons()
         numCols = slider_cols;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Add Col") && numCols < 8)
+    if (ImGui::Button("Add Col") && numCols < maxNumCols)
     {
         ++numCols;
         user_added_cols = true;
@@ -302,7 +303,7 @@ void WindowClass::LoadFromFile(std::string_view filename)
     data.clear();
 
     auto line = std::string{};
-    auto num_rows = 0;
+    auto num_rows = 0U;
 
     while (std::getline(in, line))
     {
@@ -323,10 +324,10 @@ void WindowClass::LoadFromFile(std::string_view filename)
     in.close();
 
     numRows = num_rows;
-    if (num_rows > 0)
+    if (num_rows > 0U)
         numCols = static_cast<std::int32_t>(data[0].size());
     else
-        numCols = 0;
+        numCols = 0U;
 }
 
 void WindowClass::SetPopupLayout()

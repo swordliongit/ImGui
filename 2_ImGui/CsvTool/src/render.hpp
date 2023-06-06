@@ -1,10 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <string_view>
 #include <vector>
 
 #include <imgui.h>
-#include <implot.h>
 
 class WindowClass
 {
@@ -13,6 +13,8 @@ public:
         ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
     constexpr static auto popUpSize = ImVec2(300.0F, 100.0F);
+    constexpr static auto maxNumRows = 30U;
+    constexpr static auto maxNumCols = 8U;
 
 public:
     void Draw(std::string_view label);
