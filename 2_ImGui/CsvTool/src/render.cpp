@@ -24,7 +24,9 @@ void WindowClass::Draw(std::string_view label)
     ImGui::Begin(label.data(), nullptr, window_flags);
 
     DrawSizeButtons();
+    ImGui::Separator();
     DrawIoButtons();
+    ImGui::Separator();
     DrawTable();
 
     ImGui::End();
@@ -84,10 +86,10 @@ void WindowClass::DrawSizeButtons()
         user_dropped_cols = true;
     }
 
+    const auto num_rows_i32 = static_cast<std::int32_t>(data.size());
     if (user_added_rows)
     {
-        for (auto row = static_cast<std::int32_t>(data.size()); row < numRows;
-             ++row)
+        for (auto row = num_rows_i32; row < numRows; ++row)
         {
             data.push_back(std::vector<float>(numCols, 0.0F));
         }
@@ -96,9 +98,9 @@ void WindowClass::DrawSizeButtons()
     {
         for (std::int32_t row = 0; row < numRows; ++row)
         {
-            for (auto col = static_cast<std::int32_t>(data[row].size());
-                 col < numCols;
-                 ++col)
+            const auto num_cols_i32 =
+                static_cast<std::int32_t>(data[row].size());
+            for (auto col = num_cols_i32; col < numCols; ++col)
             {
                 data[row].push_back(0.0F);
             }
@@ -106,8 +108,7 @@ void WindowClass::DrawSizeButtons()
     }
     else if (user_dropped_rows)
     {
-        for (auto row = static_cast<std::int32_t>(data.size()); row > numRows;
-             --row)
+        for (auto row = num_rows_i32; row > numRows; --row)
         {
             data.pop_back();
         }
@@ -116,9 +117,9 @@ void WindowClass::DrawSizeButtons()
     {
         for (std::int32_t row = 0; row < numRows; ++row)
         {
-            for (auto col = static_cast<std::int32_t>(data[row].size());
-                 col > numCols;
-                 --col)
+            const auto num_cols_i32 =
+                static_cast<std::int32_t>(data[row].size());
+            for (auto col = num_cols_i32; col > numCols; --col)
             {
                 data[row].pop_back();
             }
@@ -128,10 +129,6 @@ void WindowClass::DrawSizeButtons()
 
 void WindowClass::DrawIoButtons()
 {
-    static char filenameBuffer[512] = "test.csv";
-
-    ImGui::Separator();
-
     if (ImGui::Button("Save"))
         ImGui::OpenPopup("Save File");
 
@@ -149,10 +146,13 @@ void WindowClass::DrawIoButtons()
         numCols = 0;
     }
 
-    ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+    DrawSavePopup();
+    DrawLoadPopup();
+}
+
+void WindowClass::DrawSavePopup()
+{
+    SetPopupLayout();
     if (ImGui::BeginPopupModal("Save File", nullptr, popUpFlags))
     {
         ImGui::InputText("File", filenameBuffer, sizeof(filenameBuffer));
@@ -170,11 +170,11 @@ void WindowClass::DrawIoButtons()
 
         ImGui::EndPopup();
     }
+}
 
-    ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+void WindowClass::DrawLoadPopup()
+{
+    SetPopupLayout();
     if (ImGui::BeginPopupModal("Load File", nullptr, popUpFlags))
     {
         ImGui::InputText("File", filenameBuffer, sizeof(filenameBuffer));
@@ -192,8 +192,6 @@ void WindowClass::DrawIoButtons()
 
         ImGui::EndPopup();
     }
-
-    ImGui::Separator();
 }
 
 void WindowClass::DrawTable()
@@ -201,7 +199,6 @@ void WindowClass::DrawTable()
     constexpr static auto table_flags =
         (ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuter);
 
-    static char buffer[512] = {'\0'};
     static auto row_clicked = 0;
     static auto col_clicked = 0;
 
@@ -241,10 +238,16 @@ void WindowClass::DrawTable()
         ImGui::TableNextRow();
     }
 
-    ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
+    DrawValuePopup(row_clicked, col_clicked);
+
+    ImGui::EndTable();
+}
+
+void WindowClass::DrawValuePopup(const int row_clicked, const int col_clicked)
+{
+    static char buffer[512] = {'\0'};
+
+    SetPopupLayout();
     if (ImGui::BeginPopupModal("Change Value", nullptr, popUpFlags))
     {
         ImGui::InputText(
@@ -266,8 +269,6 @@ void WindowClass::DrawTable()
 
         ImGui::EndPopup();
     }
-
-    ImGui::EndTable();
 }
 
 void WindowClass::SaveToFile(std::string_view filename)
@@ -326,6 +327,14 @@ void WindowClass::LoadFromFile(std::string_view filename)
         numCols = static_cast<std::int32_t>(data[0].size());
     else
         numCols = 0;
+}
+
+void WindowClass::SetPopupLayout()
+{
+    ImGui::SetNextWindowSize(popUpSize);
+    ImGui::SetNextWindowPos(
+        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
+               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
 }
 
 template <typename T>
