@@ -40,17 +40,17 @@ void WindowClass::DrawSizeButtons()
     auto user_added_cols = false;
     auto user_dropped_cols = false;
 
-    auto slider_rows = numRows;
-    auto slider_cols = numCols;
+    auto slider_value_rows = numRows;
+    auto slider_value_cols = numCols;
 
     ImGui::Text("Num Rows: ");
     ImGui::SameLine();
-    if (ImGui::SliderInt("##numRows", &slider_rows, 0, maxNumRows))
+    if (ImGui::SliderInt("##numRows", &slider_value_rows, 0, maxNumRows))
     {
-        user_added_rows = slider_rows > numRows ? true : false;
-        user_dropped_rows = !user_dropped_rows;
+        user_added_rows = slider_value_rows > numRows ? true : false;
+        user_dropped_rows = !user_added_rows;
 
-        numRows = slider_rows;
+        numRows = slider_value_rows;
     }
     ImGui::SameLine();
     if (ImGui::Button("Add Row") && numRows < maxNumRows)
@@ -67,12 +67,12 @@ void WindowClass::DrawSizeButtons()
 
     ImGui::Text("Num Cols: ");
     ImGui::SameLine();
-    if (ImGui::SliderInt("##numCols", &slider_cols, 0, maxNumCols))
+    if (ImGui::SliderInt("##numCols", &slider_value_cols, 0, maxNumCols))
     {
-        user_added_cols = slider_cols > numCols ? true : false;
-        user_dropped_cols = !user_dropped_cols;
+        user_added_cols = slider_value_cols > numCols ? true : false;
+        user_dropped_cols = !user_added_cols;
 
-        numCols = slider_cols;
+        numCols = slider_value_cols;
     }
     ImGui::SameLine();
     if (ImGui::Button("Add Col") && numCols < maxNumCols)
@@ -151,54 +151,10 @@ void WindowClass::DrawIoButtons()
     DrawLoadPopup();
 }
 
-void WindowClass::DrawSavePopup()
-{
-    SetPopupLayout();
-    if (ImGui::BeginPopupModal("Save File", nullptr, popUpFlags))
-    {
-        ImGui::InputText("File", filenameBuffer, sizeof(filenameBuffer));
-
-        if (ImGui::Button("Save"))
-        {
-            SaveToFile(filenameBuffer);
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel"))
-        {
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
-    }
-}
-
-void WindowClass::DrawLoadPopup()
-{
-    SetPopupLayout();
-    if (ImGui::BeginPopupModal("Load File", nullptr, popUpFlags))
-    {
-        ImGui::InputText("File", filenameBuffer, sizeof(filenameBuffer));
-
-        if (ImGui::Button("Load"))
-        {
-            LoadFromFile(filenameBuffer);
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel"))
-        {
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
-    }
-}
-
 void WindowClass::DrawTable()
 {
     constexpr static auto table_flags =
-        (ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuter);
+        ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuter;
 
     static auto row_clicked = 0;
     static auto col_clicked = 0;
@@ -210,7 +166,8 @@ void WindowClass::DrawTable()
 
     for (std::int32_t col = 0; col < numCols; ++col)
     {
-        ImGui::TableSetupColumn(fmt::format("{}", 'A' + col).data(),
+        const auto col_name = fmt::format("{}", 'A' + col);
+        ImGui::TableSetupColumn(col_name.data(),
                                 ImGuiTableColumnFlags_WidthFixed,
                                 1280.0F / static_cast<float>(numCols));
     }
@@ -235,7 +192,6 @@ void WindowClass::DrawTable()
                 ImGui::SetTooltip("Cell: (%d, %d)", row, col);
             }
         }
-
         ImGui::TableNextRow();
     }
 
@@ -244,26 +200,25 @@ void WindowClass::DrawTable()
     ImGui::EndTable();
 }
 
-void WindowClass::DrawValuePopup(const int row_clicked, const int col_clicked)
+void WindowClass::DrawSavePopup()
 {
-    static char buffer[512] = {'\0'};
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
 
     SetPopupLayout();
-    if (ImGui::BeginPopupModal("Change Value", nullptr, popUpFlags))
+    if (ImGui::BeginPopupModal("Save File", nullptr, popUpFlags))
     {
-        ImGui::InputText(
-            fmt::format("##{}_{}", row_clicked, col_clicked).data(),
-            buffer,
-            sizeof(buffer));
+        ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
 
-        if (ImGui::Button("Save"))
+        if (ImGui::Button("Save", popUpButtonSize))
         {
-            data[row_clicked][col_clicked] = std::stof(buffer);
-
+            SaveToCsvFile(filenameBuffer);
             ImGui::CloseCurrentPopup();
         }
+
         ImGui::SameLine();
-        if (ImGui::Button("Cancel"))
+
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
         {
             ImGui::CloseCurrentPopup();
         }
@@ -272,11 +227,69 @@ void WindowClass::DrawValuePopup(const int row_clicked, const int col_clicked)
     }
 }
 
-void WindowClass::SaveToFile(std::string_view filename)
+void WindowClass::DrawLoadPopup()
+{
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
+
+    SetPopupLayout();
+    if (ImGui::BeginPopupModal("Load File", nullptr, popUpFlags))
+    {
+        ImGui::InputText("Filename", filenameBuffer, sizeof(filenameBuffer));
+
+        if (ImGui::Button("Load", popUpButtonSize))
+        {
+            LoadFromCsvFile(filenameBuffer);
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void WindowClass::DrawValuePopup(const int row, const int col)
+{
+    static char buffer[64] = {'\0'};
+
+    const auto esc_pressed =
+        ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Escape));
+
+    SetPopupLayout();
+    if (ImGui::BeginPopupModal("Change Value", nullptr, popUpFlags))
+    {
+        const auto label = fmt::format("##{}_{}", row, col);
+        ImGui::InputText(label.data(), buffer, sizeof(buffer));
+
+        if (ImGui::Button("Save", popUpButtonSize))
+        {
+            data[row][col] = std::stof(buffer);
+
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel", popUpButtonSize) || esc_pressed)
+        {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+}
+
+void WindowClass::SaveToCsvFile(std::string_view filename)
 {
     auto out = std::ofstream{filename.data()};
 
-    if (!out.is_open())
+    if (!out || !out.is_open())
         return;
 
     for (std::int32_t row = 0; row < numRows; ++row)
@@ -286,18 +299,17 @@ void WindowClass::SaveToFile(std::string_view filename)
             out << data[row][col];
             out << ',';
         }
-
         out << '\n';
     }
 
     out.close();
 }
 
-void WindowClass::LoadFromFile(std::string_view filename)
+void WindowClass::LoadFromCsvFile(std::string_view filename)
 {
     auto in = std::ifstream{filename.data()};
 
-    if (!in.is_open())
+    if (!in || !in.is_open())
         return;
 
     data.clear();
@@ -324,18 +336,10 @@ void WindowClass::LoadFromFile(std::string_view filename)
     in.close();
 
     numRows = num_rows;
-    if (num_rows > 0U)
+    if (numRows > 0U)
         numCols = static_cast<std::int32_t>(data[0].size());
     else
         numCols = 0U;
-}
-
-void WindowClass::SetPopupLayout()
-{
-    ImGui::SetNextWindowSize(popUpSize);
-    ImGui::SetNextWindowPos(
-        ImVec2(ImGui::GetIO().DisplaySize.x / 2.0F - popUpSize.x / 2.0F,
-               ImGui::GetIO().DisplaySize.y / 2.0F - popUpSize.y / 2.0F));
 }
 
 template <typename T>
@@ -345,7 +349,13 @@ void WindowClass::PlotCellValue(std::string_view formatter, const T value)
     ImGui::Text(formatter.data(), value);
 }
 
+void WindowClass::SetPopupLayout()
+{
+    ImGui::SetNextWindowSize(popUpSize);
+    ImGui::SetNextWindowPos(popUpPos);
+}
+
 void render(WindowClass &window_obj)
 {
-    window_obj.Draw("Label");
+    window_obj.Draw("CsvTool");
 }
