@@ -45,7 +45,7 @@ void Clock::Draw(std::string_view label)
 
     DrawCircle(innerRadius);
 
-    DrawDigitalClock();
+    // DrawDigitalClock();
 
     ImGui::End();
 }

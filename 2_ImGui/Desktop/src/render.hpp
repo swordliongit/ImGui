@@ -1,11 +1,12 @@
 #pragma once
 
+#include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
-#include <imgui.h>
-
 #include <fmt/format.h>
+#include <imgui.h>
 #include <implot.h>
 
 #include "clock.hpp"
@@ -13,21 +14,23 @@
 class WindowClass
 {
 public:
-    constexpr static auto numIcons = std::uint32_t{10U};
+    constexpr static auto numIcons = std::uint32_t{10};
 
     struct Icon
     {
-        Icon(std::string_view label_) : label(label_), position(ImVec2{}){};
+        Icon(std::string_view label_)
+            : label(label_), position(ImVec2{}), popupOpen(false),
+              clickCount(0){};
         void Draw();
 
         std::string label;
         ImVec2 position;
-        bool popupOpen = false;
-        std::uint32_t clickCount = 0;
+        bool popupOpen;
+        std::uint32_t clickCount;
     };
 
 public:
-    WindowClass() : icons({}), clock({})
+    WindowClass() : icons(), clock({})
     {
         icons.reserve(numIcons);
         for (std::uint32_t i = 0; i < numIcons; ++i)
@@ -37,6 +40,8 @@ public:
     };
 
     void Draw(std::string_view label);
+
+private:
     void DrawDesktop();
     void DrawTaskbar();
 
