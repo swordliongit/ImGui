@@ -23,35 +23,37 @@ void WindowClass::Draw(std::string_view label)
 
     const auto cursor_pos = ImGui::GetCursorScreenPos();
     center = ImVec2(cursor_pos.x + circleRadius, cursor_pos.y + circleRadius);
-    ImGui::GetWindowDrawList()->AddCircle(center,
-                                          circleRadius,
-                                          ImGui::GetColorU32(ImGuiCol_Text),
-                                          100,
-                                          2.0F);
+
+    DrawCircle(circleRadius);
 
     GetTime();
     const auto [hour_theta, minute_theta, second_theta] = GetTheta();
-
-    DrawClockHand(circleRadius * 0.95F,
+    DrawClockHand(circleRadius * hrsClockHandLength,
                   hour_theta,
                   ImColor(1.0f, 0.0F, 0.0f, 1.0f));
-    DrawClockHand(circleRadius * 0.85F,
+    DrawClockHand(circleRadius * minsClockHandLength,
                   minute_theta,
                   ImColor(0.0f, 1.0F, 0.0f, 1.0f));
-    DrawClockHand(circleRadius * 0.75F,
+    DrawClockHand(circleRadius * secsClockHandLength,
                   second_theta,
                   ImColor(0.0f, 0.0F, 1.0f, 1.0f));
+    DrawAllHourStrokes();
+    DrawAllMinuteStrokes();
 
-    DrawHours();
-    DrawMinutes();
+    DrawCircle(innerRadius);
 
-    ImGui::GetWindowDrawList()->AddCircle(center,
-                                          5.0F,
-                                          ImGui::GetColorU32(ImGuiCol_Text),
-                                          10,
-                                          2.0F);
+    DrawDigitalClock();
 
     ImGui::End();
+}
+
+void WindowClass::DrawCircle(const float radius)
+{
+    ImGui::GetWindowDrawList()->AddCircle(center,
+                                          radius,
+                                          ImGui::GetColorU32(ImGuiCol_Text),
+                                          100,
+                                          2.0F);
 }
 
 void WindowClass::DrawClockHand(const float radius,
@@ -65,7 +67,7 @@ void WindowClass::DrawClockHand(const float radius,
     ImGui::GetWindowDrawList()->AddLine(center, end_point, color, 3.0F);
 }
 
-void WindowClass::DrawHours()
+void WindowClass::DrawAllHourStrokes()
 {
     for (std::uint8_t hr = 0; hr < 12; ++hr)
     {
@@ -73,8 +75,9 @@ void WindowClass::DrawHours()
         const auto c = std::cos(theta); // x
         const auto s = std::sin(theta); // y
 
-        const auto start_point = ImVec2(center.x + (circleRadius * 0.9F) * c,
-                                        center.y - (circleRadius * 0.9F) * s);
+        const auto start_point =
+            ImVec2(center.x + (circleRadius * hrsStrokesLength) * c,
+                   center.y - (circleRadius * hrsStrokesLength) * s);
         const auto end_point =
             ImVec2(center.x + circleRadius * c, center.y - circleRadius * s);
 
@@ -85,7 +88,7 @@ void WindowClass::DrawHours()
     }
 }
 
-void WindowClass::DrawMinutes()
+void WindowClass::DrawAllMinuteStrokes()
 {
     for (std::uint8_t min = 0; min < 60; ++min)
     {
@@ -93,8 +96,9 @@ void WindowClass::DrawMinutes()
         const auto c = std::cos(theta); // x
         const auto s = std::sin(theta); // y
 
-        const auto start_point = ImVec2(center.x + (circleRadius * 0.95F) * c,
-                                        center.y - (circleRadius * 0.95F) * s);
+        const auto start_point =
+            ImVec2(center.x + (circleRadius * minsStrokesLength) * c,
+                   center.y - (circleRadius * minsStrokesLength) * s);
         const auto end_point =
             ImVec2(center.x + circleRadius * c, center.y - circleRadius * s);
 
@@ -131,7 +135,14 @@ std::tuple<float, float, float> WindowClass::GetTheta()
     return std::make_tuple(hour_theta, minute_theta, second_theta);
 }
 
+void WindowClass::DrawDigitalClock()
+{
+    ImGui::SetCursorPosX(center.x - 25.0F);
+    ImGui::SetCursorPosY(2.0F * circleRadius + 50.0F);
+    ImGui::Text("%d:%d:%d", hrs, mins, secs);
+}
+
 void render(WindowClass &window_obj)
 {
-    window_obj.Draw("Label");
+    window_obj.Draw("Wall Clock");
 }
