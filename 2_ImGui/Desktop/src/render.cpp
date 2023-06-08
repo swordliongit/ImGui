@@ -8,12 +8,17 @@
 
 void WindowClass::Draw(std::string_view label)
 {
+    constexpr static auto window_flags =
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoInputs;
+    constexpr static auto window_size = ImVec2(1280.0F, 720.0F);
+    constexpr static auto window_pos = ImVec2(0.0F, 0.0F);
+
     ImGui::SetNextWindowSize(window_size);
     ImGui::SetNextWindowPos(window_pos);
 
-    ImGui::Begin(label.data(),
-                 nullptr,
-                 window_flags | ImGuiWindowFlags_NoInputs);
+    ImGui::Begin(label.data(), nullptr, window_flags);
 
     DrawDesktop();
     DrawTaskbar();
@@ -29,12 +34,19 @@ void WindowClass::DrawDesktop()
 
 void WindowClass::DrawTaskbar()
 {
+    static constexpr auto taskbar_flags =
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoTitleBar;
+    static constexpr auto taskbar_size = ImVec2(1280.0F, 40.0F);
+    static constexpr auto taskbar_pos = ImVec2(0.0F, 680.0F);
+
     static auto open_taskbar = false;
 
-    ImGui::SetNextWindowPos(ImVec2(0.0F, 680.0F), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(1280.0F, 40.0F), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(taskbar_size, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(taskbar_pos, ImGuiCond_Always);
 
-    ImGui::Begin("Taskbar", NULL, window_flags);
+    ImGui::Begin("Taskbar", nullptr, taskbar_flags);
 
     if (ImGui::Button("All Icons", ImVec2(100, 30)))
     {

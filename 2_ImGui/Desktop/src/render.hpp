@@ -13,13 +13,6 @@
 class WindowClass
 {
 public:
-    constexpr static auto window_flags =
-        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoTitleBar;
-    constexpr static auto window_size = ImVec2(1280.0F, 720.0F);
-    constexpr static auto window_pos = ImVec2(0.0F, 0.0F);
-
     constexpr static auto numIcons = std::uint32_t{10U};
 
     struct Icon
