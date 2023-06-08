@@ -1,25 +1,24 @@
 #pragma once
 
+#include <cstdint>
 #include <numbers>
 #include <string_view>
 #include <tuple>
 
-#include <fmt/format.h>
 #include <imgui.h>
-#include <implot.h>
 
 class WindowClass
 {
-public:
-    constexpr static auto PI = std::numbers::pi_v<float>;
-    constexpr static auto circleRadius = 250.0F;
-    constexpr static auto offset = PI / 2.0F;
-    constexpr static auto innerRadius = 5.0F;
-    constexpr static auto hrsClockHandLength = 0.95F;
-    constexpr static auto minsClockHandLength = 0.85F;
-    constexpr static auto secsClockHandLength = 0.75F;
-    constexpr static auto hrsStrokesLength = 0.90F;
-    constexpr static auto minsStrokesLength = 0.95F;
+private:
+    static constexpr auto PI = std::numbers::pi_v<float>;
+    static constexpr auto circleRadius = 250.0F;
+    static constexpr auto offset = PI / 2.0F;
+    static constexpr auto innerRadius = 5.0F;
+    static constexpr auto hrsClockHandLength = 0.95F;
+    static constexpr auto minsClockHandLength = 0.85F;
+    static constexpr auto secsClockHandLength = 0.75F;
+    static constexpr auto hrsStrokesLength = 0.90F;
+    static constexpr auto minsStrokesLength = 0.95F;
 
 public:
     WindowClass() : secs(0), mins(0), hrs(0), center({}){};
