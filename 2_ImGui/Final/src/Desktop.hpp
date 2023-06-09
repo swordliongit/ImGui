@@ -14,7 +14,6 @@
 #include "CsvEditor.hpp"
 #include "Diff.hpp"
 #include "FileExplorer.hpp"
-#include "MediaPlayer.hpp"
 #include "OtherTopics.hpp"
 #include "Paint.hpp"
 #include "TextEditor.hpp"
@@ -39,14 +38,13 @@ public:
 public:
     Desktop()
         : icons({}), adv_calc(), calendar(), diff_viewer(), file_explorer(),
-          media_player(), paint(), text_editor(), csv_editor(), clock({})
+          paint(), text_editor(), csv_editor(), clock()
     {
         icons.reserve(7);
         icons.push_back(Icon{"AdvCalc", &adv_calc});
         icons.push_back(Icon{"Calendar", &calendar});
         icons.push_back(Icon{"DiffViewer", &diff_viewer});
         icons.push_back(Icon{"FileExplorer", &file_explorer});
-        icons.push_back(Icon{"MediaPlayer", &media_player});
         icons.push_back(Icon{"Paint", &paint});
         icons.push_back(Icon{"TextEditor", &text_editor});
         icons.push_back(Icon{"CsvEditor", &csv_editor});
@@ -70,7 +68,6 @@ private:
     Calender calendar;
     DiffViewer diff_viewer;
     FileExplorer file_explorer;
-    MediaPlayer media_player;
     Paint paint;
     TextEditor text_editor;
     CsvEditor csv_editor;

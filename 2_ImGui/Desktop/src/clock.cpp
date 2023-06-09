@@ -7,7 +7,7 @@
 #include <imgui.h>
 #include <implot.h>
 
-#include "render.hpp"
+#include "clock.hpp"
 
 void Clock::Draw(std::string_view label)
 {

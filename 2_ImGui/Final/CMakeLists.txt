@@ -51,7 +51,6 @@ add_executable(${PROJECT_NAME}
     src/Calender.cpp
     src/Diff.cpp
     src/FileExplorer.cpp
-    src/MediaPlayer.cpp
     src/Paint.cpp
     src/TextEditor.cpp
     src/CsvEditor.cpp

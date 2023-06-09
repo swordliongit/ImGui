@@ -1,6 +1,3 @@
-#define MINIAUDIO_IMPLEMENTATION
-#include "miniaudio.h"
-
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
