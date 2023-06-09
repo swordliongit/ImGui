@@ -5,7 +5,6 @@
 #include <vector>
 
 #include <imgui.h>
-#include <implot.h>
 
 #include "WindowBase.hpp"
 
@@ -15,20 +14,25 @@ public:
     using FileContent = std::vector<std::string>;
 
 public:
-    DiffViewer(){};
+    DiffViewer()
+        : filePath1("text1.txt"), filePath2("text2.txt"), fileContent1({}),
+          fileContent2({}), diffResult1({}), diffResult2({}){};
     virtual ~DiffViewer(){};
 
     void Draw(std::string_view label, bool *open = nullptr) final;
 
-    FileContent LoadFileContent(std::string_view file_path);
-    void SaveFileContent(std::string_view file_path,
-                         const FileContent &content);
+private:
+    void DrawSelection();
+    void DrawDiffView();
+    void DrawStats();
 
+    FileContent LoadFileContent(std::string_view file_path);
+    void SaveFileContent(std::string_view file_path, FileContent &file_content);
     void CreateDiff();
 
 private:
-    std::string filePath1 = "text1.txt";
-    std::string filePath2 = "text2.txt";
+    std::string filePath1;
+    std::string filePath2;
 
     FileContent fileContent1;
     FileContent fileContent2;
