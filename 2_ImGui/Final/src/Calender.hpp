@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <chrono>
+#include <compare>
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -9,62 +11,66 @@
 #include <vector>
 
 #include <imgui.h>
-#include <implot.h>
 
 #include "WindowBase.hpp"
 
 class Calender : public WindowBase
 {
 public:
-    static constexpr const char *months[12] = {"January",
-                                               "February",
-                                               "March",
-                                               "April",
-                                               "May",
-                                               "June",
-                                               "July",
-                                               "August",
-                                               "September",
-                                               "October",
-                                               "November",
-                                               "December"};
+    static constexpr auto meetingWindowFlags =
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
+    static constexpr auto meetingWindowSize = ImVec2(300.0F, 100.0F);
+    static constexpr auto meetingWindowButtonSize = ImVec2(120.0F, 0.0F);
+    static constexpr auto meetingWindowPos =
+        ImVec2(1280.0F / 2.0F - meetingWindowSize.x / 2.0F,
+               720.0F / 2.0F - meetingWindowSize.y / 2.0F);
+
+
+    static constexpr auto monthNames = std::array<std::string_view, 12U>{
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    };
+    static constexpr auto minYear = 2000U;
+    static constexpr auto maxYear = 2038U;
 
     struct Meeting
     {
         std::string name;
 
-        void Serialize(std::ostream &out) const
-        {
-            const auto nameLength = static_cast<std::uint32_t>(name.size());
-            out.write(reinterpret_cast<const char *>(&nameLength),
-                      sizeof(nameLength));
-            out.write(name.data(), name.size());
-        }
+        void Serialize(std::ofstream &out) const;
+        static Meeting Deserialize(std::ifstream &in);
 
-        static Meeting Deserialize(std::istream &in)
+        constexpr bool operator==(const Meeting &rhs) const
         {
-            auto meeting = Meeting{};
-            auto nameLength = std::uint32_t{};
-            in.read(reinterpret_cast<char *>(&nameLength), sizeof(nameLength));
-            meeting.name.resize(nameLength);
-            in.read(meeting.name.data(), nameLength);
-            return meeting;
+            return name == rhs.name;
         }
     };
 
 public:
-    Calender(){};
+    Calender() : meetings({}){};
     virtual ~Calender(){};
+
     void Draw(std::string_view label, bool *open = nullptr) final;
 
-    void LoadMeetingsFromFile(const std::string_view filename);
-    void SaveMeetingsToFile(const std::string_view filename) const;
+    void LoadMeetingsFromFile(std::string_view filename);
+    void SaveMeetingsToFile(std::string_view filename);
 
 private:
-    void DrawCalendar();
+    void DrawDateCombo();
+    void DrawCalender();
     void DrawAddMeetingWindow();
-    void DrawDateCombo(std::string_view label, int *day, int *month, int *year);
-    void DrawMeetingsList();
+    void DrawMeetingList();
 
     void UpdateSelectedDateVariables();
 
@@ -72,10 +78,11 @@ private:
     int selectedDay = 1;
     int selectedMonth = 1;
     int selectedYear = 2023;
-    std::chrono::year_month_day selected_date;
+    std::chrono::year_month_day selectedDate;
 
     bool addMeetingWindowOpen = false;
-    std::map<std::chrono::year_month_day, std::vector<Meeting>> meetings;
 
-    float calendarFontScale = 1.25f;
+    float calenderFontSize = 2.0F;
+
+    std::map<std::chrono::year_month_day, std::vector<Meeting>> meetings;
 };

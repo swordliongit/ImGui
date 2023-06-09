@@ -3,14 +3,43 @@
 #include <set>
 #include <string_view>
 
-#include <imgui.h>
-
 #include <fmt/format.h>
+#include <imgui.h>
 #include <implot.h>
 
 #include "AdvCalc.hpp"
 
 void AdvCalc::Draw(std::string_view label, bool *open)
+{
+    ImGui::SetNextWindowPos(mainWindowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(mainWindowSize, ImGuiCond_Always);
+
+    ImGui::Begin(label.data(), open, mainWindowFlags);
+
+    DrawSelection();
+    DrawPlot();
+
+    ImGui::End();
+}
+
+void AdvCalc::DrawSelection()
+{
+    for (const auto func_name : functionNames)
+    {
+        const auto curr_function = functionNameMapping(func_name);
+        auto selected = selectedFunctions.contains(curr_function);
+
+        if (ImGui::Checkbox(func_name.data(), &selected))
+        {
+            if (selected)
+                selectedFunctions.insert(curr_function);
+            else
+                selectedFunctions.erase(curr_function);
+        }
+    }
+}
+
+void AdvCalc::DrawPlot()
 {
     static constexpr auto num_points = 10'000;
     static constexpr auto x_min = -100.0;
@@ -20,37 +49,16 @@ void AdvCalc::Draw(std::string_view label, bool *open)
     static auto xs = std::array<double, num_points>{};
     static auto ys = std::array<double, num_points>{};
 
-    ImGui::SetNextWindowPos(mainWindowPos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(mainWindowSize, ImGuiCond_Always);
-
-    ImGui::Begin(label.data(), open, mainWindowFlags);
-
-    for (const auto func_name : functionNames)
-    {
-        const auto curr_function = functionNameMapping(func_name);
-        auto selected = selectedFunctions.contains(curr_function);
-        if (ImGui::Checkbox(func_name.data(), &selected))
-        {
-            if (selected)
-                selectedFunctions.insert(curr_function);
-            else
-                selectedFunctions.erase(curr_function);
-        }
-    }
-
-    ImPlot::BeginPlot("###plot",
-                      ImVec2(-1.0F, 720.0F - ImGui::GetCursorPosY()),
-                      ImPlotFlags_NoTitle);
-
     if (selectedFunctions.size() == 0 ||
         (selectedFunctions.size() == 1 &&
          *selectedFunctions.begin() == Function::NONE))
     {
+        ImPlot::BeginPlot("###plot", ImVec2(-1.0F, -1.0F), ImPlotFlags_NoTitle);
         ImPlot::EndPlot();
-        ImGui::End();
-
         return;
     }
+
+    ImPlot::BeginPlot("###plot", ImVec2(-1.0F, -1.0F), ImPlotFlags_NoTitle);
 
     for (const auto &function : selectedFunctions)
     {
@@ -68,8 +76,18 @@ void AdvCalc::Draw(std::string_view label, bool *open)
     }
 
     ImPlot::EndPlot();
+}
 
-    ImGui::End();
+AdvCalc::Function AdvCalc::functionNameMapping(
+    std::string_view function_name)
+{
+    if (std::string_view{"sin(x)"} == function_name)
+        return AdvCalc::Function::SIN;
+
+    if (std::string_view{"cos(x)"} == function_name)
+        return AdvCalc::Function::COS;
+
+    return AdvCalc::Function::NONE;
 }
 
 double AdvCalc::evaluateFunction(const Function function, const double x)
@@ -86,17 +104,8 @@ double AdvCalc::evaluateFunction(const Function function, const double x)
     }
     case Function::NONE:
     default:
+    {
         return 0.0;
     }
-}
-
-AdvCalc::Function AdvCalc::functionNameMapping(std::string_view function_name)
-{
-    if (std::string_view{"sin(x)"} == function_name)
-        return AdvCalc::Function::SIN;
-
-    if (std::string_view{"cos(x)"} == function_name)
-        return AdvCalc::Function::COS;
-
-    return AdvCalc::Function::NONE;
+    }
 }
