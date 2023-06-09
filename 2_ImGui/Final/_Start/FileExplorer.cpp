@@ -4,17 +4,33 @@
 #include <iostream>
 #include <string_view>
 
-#include <imgui.h>
-
 #include <fmt/format.h>
+#include <imgui.h>
 #include <implot.h>
 
 #include "FileExplorer.hpp"
 
-void FileExplorer::Draw(std::string_view label)
+void FileExplorer::Draw(std::string_view label, bool *open)
 {
-    ImGui::Begin(label.data());
+    ImGui::SetNextWindowPos(mainWindowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(mainWindowSize, ImGuiCond_Always);
 
+    ImGui::Begin(label.data(), open, mainWindowFlags);
+
+    DrawMenu();
+    ImGui::Separator();
+    DrawContent();
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 100.0F);
+    ImGui::Separator();
+    DrawActions();
+    ImGui::Separator();
+    DrawFilter();
+
+    ImGui::End();
+}
+
+void FileExplorer::DrawMenu()
+{
     if (ImGui::Button("Go Up"))
     {
         if (currentPath.has_parent_path())
@@ -26,9 +42,10 @@ void FileExplorer::Draw(std::string_view label)
     ImGui::SameLine();
 
     ImGui::Text("Current directory: %s", currentPath.string().c_str());
+}
 
-    ImGui::Separator();
-
+void FileExplorer::DrawContent()
+{
     for (const auto &entry : fs::directory_iterator(currentPath))
     {
         const auto is_selected = entry.path() == selectedEntry;
@@ -38,158 +55,152 @@ void FileExplorer::Draw(std::string_view label)
 
         if (is_directory)
             entry_name = "[D] " + entry_name;
-        if (is_file)
+        else if (is_file)
             entry_name = "[F] " + entry_name;
 
         if (ImGui::Selectable(entry_name.c_str(), is_selected))
         {
             if (is_directory)
-            {
                 currentPath /= entry.path().filename();
-            }
 
             selectedEntry = entry.path();
         }
     }
+}
 
-    ImGui::Separator();
-
-    if (!selectedEntry.empty())
+void FileExplorer::DrawActions()
+{
+    if (fs::is_directory(selectedEntry))
+        ImGui::Text("Selected dir: %s", selectedEntry.string().c_str());
+    else if (fs::is_regular_file(selectedEntry))
+        ImGui::Text("Selected file: %s", selectedEntry.string().c_str());
+    else
     {
-        if (fs::is_directory(selectedEntry))
-        {
-            ImGui::Text("Selected dir: %s", selectedEntry.string().c_str());
-        }
-        else
-        {
-            ImGui::Text("Selected file: %s", selectedEntry.string().c_str());
-        }
+        ImGui::Text("Selected file: n/a");
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
+                            ImGui::GetStyle().Alpha * 0.0f);
+        ImGui::Button("Non-clickable button");
+        ImGui::PopStyleVar();
+        return;
+    }
 
-        if (fs::is_regular_file(selectedEntry))
-        {
-            if (ImGui::Button("Open"))
-            {
-                openFileWithDefaultEditor(selectedEntry);
-            }
+    if (fs::is_regular_file(selectedEntry) && ImGui::Button("Open"))
+        openFileWithDefaultEditor();
 
-            ImGui::SameLine();
-        }
+    ImGui::SameLine();
 
-        if (ImGui::Button("Rename"))
-        {
-            renameDialogOpen = true;
-        }
-
-        if (renameDialogOpen)
-        {
-            ImGui::OpenPopup("Rename File");
-        }
-
-        if (ImGui::BeginPopupModal("Rename File", &renameDialogOpen))
-        {
-            static char buffer_name[512] = {'\0'};
-
-            ImGui::Text("New name: ");
-            ImGui::InputText("###NewName", buffer_name, sizeof(buffer_name));
-
-            if (ImGui::Button("Rename"))
-            {
-                auto new_path = selectedEntry.parent_path() / buffer_name;
-                if (renameFile(selectedEntry, new_path))
-                {
-                    renameDialogOpen = false;
-                    selectedEntry = new_path;
-                    std::memset(buffer_name, 0, sizeof(buffer_name));
-                }
-            }
-
-            ImGui::SameLine();
-
-            if (ImGui::Button("Cancel"))
-            {
-                renameDialogOpen = false;
-            }
-
-            ImGui::EndPopup();
-        }
-
-        ImGui::SameLine();
-
-        if (ImGui::Button("Delete"))
-        {
-            deleteDialogOpen = true;
-        }
-
-        if (deleteDialogOpen)
-        {
-            ImGui::OpenPopup("Delete File");
-        }
-
-        if (ImGui::BeginPopupModal("Delete File", &deleteDialogOpen))
-        {
-            ImGui::Text("Are you sure you want to delete %s?",
-                        selectedEntry.filename().string().c_str());
-
-            if (ImGui::Button("Yes"))
-            {
-                if (deleteFile(selectedEntry))
-                {
-                    selectedEntry.clear();
-                }
-                deleteDialogOpen = false;
-            }
-
-            ImGui::SameLine();
-
-            if (ImGui::Button("No"))
-            {
-                deleteDialogOpen = false;
-            }
-
-            ImGui::EndPopup();
-        }
+    if (ImGui::Button("Rename"))
+    {
+        renameDialogOpen = true;
+        ImGui::OpenPopup("Rename File");
     }
 
     ImGui::SameLine();
 
+    if (ImGui::Button("Delete"))
+    {
+        deleteDialogOpen = true;
+        ImGui::OpenPopup("Delete File");
+    }
+
+    renameFilePopup();
+    deleteFilePopup();
+}
+
+void FileExplorer::DrawFilter()
+{
     static char extension_filter[16] = {"\0"};
-    auto filtered_file_count = 0;
+
     ImGui::Text("Filter by extension");
     ImGui::SameLine();
     ImGui::InputText("###inFilter", extension_filter, sizeof(extension_filter));
 
+    if (std::strlen(extension_filter) == 0)
+        return;
+
+    auto filtered_file_count = std::size_t{0};
     for (const auto &entry : fs::directory_iterator(currentPath))
     {
         if (!fs::is_regular_file(entry))
             continue;
 
         if (entry.path().extension().string() == extension_filter)
-            filtered_file_count++;
+            ++filtered_file_count;
     }
 
-    ImGui::Text("Number of files: %d", filtered_file_count);
-
-    ImGui::End();
+    ImGui::Text("Number of files: %u", filtered_file_count);
 }
 
-void FileExplorer::openFileWithDefaultEditor(const fs::path &filePath)
+void FileExplorer::openFileWithDefaultEditor()
 {
 #ifdef _WIN32
-    const auto command = "start \"\" \"" + filePath.string() + "\"";
+    const auto command = "start \"\" \"" + selectedEntry.string() + "\"";
 #elif __APPLE__
-    const auto command = "open \"" + filePath.string() + "\"";
+    const auto command = "open \"" + selectedEntry.string() + "\"";
 #else
-    const auto command = "xdg-open \"" + filePath.string() + "\"";
+    const auto command = "xdg-open \"" + selectedEntry.string() + "\"";
 #endif
 
     std::system(command.c_str());
 }
 
-bool FileExplorer::renameFile(const fs::path &oldPath, const fs::path &newPath)
+void FileExplorer::renameFilePopup()
+{
+    if (ImGui::BeginPopupModal("Rename File", &renameDialogOpen))
+    {
+        static char buffer_name[512] = {'\0'};
+
+        ImGui::Text("New name: ");
+        ImGui::InputText("###newName", buffer_name, sizeof(buffer_name));
+
+        if (ImGui::Button("Rename"))
+        {
+            auto new_path = selectedEntry.parent_path() / buffer_name;
+            if (renameFile(selectedEntry, new_path))
+            {
+                renameDialogOpen = false;
+                selectedEntry = new_path;
+                std::memset(buffer_name, 0, sizeof(buffer_name));
+            }
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel"))
+            renameDialogOpen = false;
+
+        ImGui::EndPopup();
+    }
+}
+
+void FileExplorer::deleteFilePopup()
+{
+    if (ImGui::BeginPopupModal("Delete File", &deleteDialogOpen))
+    {
+        ImGui::Text("Are you sure you want to delete %s?",
+                    selectedEntry.filename().string().c_str());
+
+        if (ImGui::Button("Yes"))
+        {
+            if (deleteFile(selectedEntry))
+                selectedEntry.clear();
+            deleteDialogOpen = false;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("No"))
+            deleteDialogOpen = false;
+
+        ImGui::EndPopup();
+    }
+}
+
+bool FileExplorer::renameFile(const fs::path &old_path, const fs::path &new_path)
 {
     try
     {
-        fs::rename(oldPath, newPath);
+        fs::rename(old_path, new_path);
         return true;
     }
     catch (const std::exception &e)

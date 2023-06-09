@@ -4,27 +4,36 @@
 #include <string_view>
 
 #include <imgui.h>
-#include <implot.h>
+
+#include "WindowBase.hpp"
 
 namespace fs = std::filesystem;
 
-class FileExplorer
+class FileExplorer : public WindowBase
 {
 public:
     FileExplorer()
         : currentPath(fs::current_path()), selectedEntry(fs::path{}){};
     virtual ~FileExplorer(){};
 
-    void Draw(std::string_view label);
+    void Draw(std::string_view label, bool *open = nullptr) final;
 
 private:
-    void openFileWithDefaultEditor(const fs::path &filePath);
-    bool renameFile(const fs::path &oldPath, const fs::path &newPath);
+    void DrawMenu();
+    void DrawContent();
+    void DrawActions();
+    void DrawFilter();
+
+    void openFileWithDefaultEditor();
+    void renameFilePopup();
+    void deleteFilePopup();
+    bool renameFile(const fs::path &old_path, const fs::path &new_path);
     bool deleteFile(const fs::path &path);
 
 private:
     fs::path currentPath;
     fs::path selectedEntry;
+
     bool renameDialogOpen = false;
     bool deleteDialogOpen = false;
 };

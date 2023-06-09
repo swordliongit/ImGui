@@ -1,282 +1,205 @@
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <compare>
 #include <cstdint>
-#include <fmt/format.h>
 #include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
+#include <map>
+#include <string_view>
 #include <vector>
 
+#include <fmt/format.h>
 #include <imgui.h>
-
 #include <implot.h>
 
 #include "Calender.hpp"
 
-void Calender::Draw(std::string_view label)
+void Calender::Draw(std::string_view label, bool *open)
 {
-    ImGui::Begin(label.data());
+    ImGui::SetNextWindowPos(mainWindowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(mainWindowSize, ImGuiCond_Always);
 
-    ImGui::Text("Select a date:");
-    DrawDateCombo("##date", &selectedDay, &selectedMonth, &selectedYear);
+    ImGui::Begin(label.data(), open, mainWindowFlags);
 
-    if (ImGui::Button("Add Meeting"))
-    {
-        addMeetingWindowOpen = true;
-    }
-
-    DrawCalendar();
+    DrawDateCombo();
+    ImGui::Separator();
+    DrawCalender();
+    ImGui::Separator();
+    DrawMeetingList();
 
     if (addMeetingWindowOpen)
-    {
         DrawAddMeetingWindow();
-    }
-
-
-    DrawMeetingsList();
 
     ImGui::End();
 }
 
-void Calender::LoadMeetingsFromFile(const std::string_view filename)
+void Calender::DrawDateCombo()
 {
-    auto in = std::ifstream(filename.data(), std::ios::binary);
+    ImGui::Text("Select a date:");
 
-    if (!in.is_open())
-        return;
-
-    auto numMeetings = 0U;
-    in.read(reinterpret_cast<char *>(&numMeetings), sizeof(numMeetings));
-
-    for (std::uint32_t i = 0; i < numMeetings; ++i)
-    {
-        auto dateRep = std::chrono::sys_days::rep{};
-        in.read(reinterpret_cast<char *>(&dateRep), sizeof(dateRep));
-
-        auto date =
-            std::chrono::sys_days{std::chrono::duration_cast<std::chrono::days>(
-                std::chrono::duration<std::chrono::sys_days::rep,
-                                      std::ratio<86400>>(dateRep))};
-
-        auto numMeetingsOnDate = 0U;
-        in.read(reinterpret_cast<char *>(&numMeetingsOnDate),
-                sizeof(numMeetingsOnDate));
-
-        for (std::uint32_t j = 0; j < numMeetingsOnDate; ++j)
-        {
-            const auto meeting = Meeting::Deserialize(in);
-            meetings[date].push_back(meeting);
-        }
-    }
-}
-
-void Calender::SaveMeetingsToFile(std::string_view filename) const
-{
-    auto out = std::ofstream(filename.data(), std::ios::binary);
-
-    const auto numMeetings = static_cast<std::uint32_t>(meetings.size());
-    out.write(reinterpret_cast<const char *>(&numMeetings),
-              sizeof(numMeetings));
-
-    for (const auto &[date, meetingList] : meetings)
-    {
-        auto sysDate = std::chrono::sys_days{date};
-        const auto dateRep = sysDate.time_since_epoch().count();
-        out.write(reinterpret_cast<const char *>(&dateRep), sizeof(dateRep));
-
-        const auto numMeetingsOnDate =
-            static_cast<std::uint32_t>(meetingList.size());
-        out.write(reinterpret_cast<const char *>(&numMeetingsOnDate),
-                  sizeof(numMeetingsOnDate));
-
-        for (const auto &meeting : meetingList)
-        {
-            meeting.Serialize(out);
-        }
-    }
-}
-
-void Calender::DrawDateCombo(std::string_view label,
-                             int *day,
-                             int *month,
-                             int *year)
-{
     ImGui::PushItemWidth(50);
 
-    if (ImGui::BeginCombo(fmt::format("##day{}", label).c_str(),
-                          std::to_string(*day).c_str()))
+    if (ImGui::BeginCombo("##day", std::to_string(selectedDay).data()))
     {
         for (std::int32_t day_idx = 1; day_idx <= 31; ++day_idx)
         {
             const auto curr_date =
-                std::chrono::year_month_day(std::chrono::year(*year),
-                                            std::chrono::month(*month),
+                std::chrono::year_month_day(std::chrono::year(selectedYear),
+                                            std::chrono::month(selectedMonth),
                                             std::chrono::day(day_idx));
 
             if (!curr_date.ok())
                 break;
 
-            if (ImGui::Selectable(std::to_string(day_idx).c_str(),
-                                  day_idx == *day))
+            if (ImGui::Selectable(std::to_string(day_idx).data(),
+                                  day_idx == selectedDay))
             {
-                *day = day_idx;
+                selectedDay = day_idx;
+                selectedDate = curr_date;
             }
         }
+
         ImGui::EndCombo();
     }
 
+    ImGui::PopItemWidth();
     ImGui::SameLine();
     ImGui::PushItemWidth(100);
 
-    if (ImGui::BeginCombo(fmt::format("##month{}", label).c_str(),
-                          months[(*month) - 1]))
+    if (ImGui::BeginCombo("##month", monthNames[selectedMonth - 1].data()))
     {
         for (std::int32_t month_idx = 1; month_idx <= 12; ++month_idx)
         {
-            if (ImGui::Selectable(months[month_idx - 1], month_idx == *month))
-            {
-                *month = month_idx;
-            }
-        }
-        ImGui::EndCombo();
-    }
+            const auto curr_date =
+                std::chrono::year_month_day(std::chrono::year(selectedYear),
+                                            std::chrono::month(month_idx),
+                                            std::chrono::day(selectedDay));
 
-    ImGui::SameLine();
-    ImGui::PushItemWidth(60);
-
-    if (ImGui::BeginCombo(fmt::format("##year{}", label).c_str(),
-                          std::to_string(*year).c_str()))
-    {
-        for (std::int32_t y = 2023; y <= 2023; ++y)
-        {
-            if (ImGui::Selectable(std::to_string(y).c_str(), y == *year))
-            {
-                *year = y;
-            }
-        }
-        ImGui::EndCombo();
-    }
-}
-
-void Calender::DrawMeetingsList()
-{
-    if (meetings.contains(selected_date))
-    {
-        ImGui::Separator();
-        ImGui::Text("Meetings on %d.%s.%d:",
-                    selectedDay,
-                    months[selectedMonth - 1],
-                    selectedYear);
-
-        const auto &meetingList = meetings[selected_date];
-
-        if (meetingList.empty())
-        {
-            ImGui::Text("No meetings scheduled for this day.");
-        }
-        else
-        {
-            for (const auto &meeting : meetingList)
-            {
-                ImGui::BulletText("%s", meeting.name.c_str());
-            }
-        }
-    }
-    else
-    {
-        ImGui::Text("No meetings for that day!");
-    }
-}
-
-
-void Calender::DrawCalendar()
-{
-    ImGui::BeginChild("Calender",
-                      ImVec2(ImGui::GetContentRegionAvail().x,
-                             ImGui::GetContentRegionAvail().y - 50.0F),
-                      true);
-
-    const auto curr_time =
-        std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now());
-    const auto todays_date = std::chrono::year_month_day{curr_time};
-
-    const auto originalFontScale = ImGui::GetFontSize();
-    ImGui::SetWindowFontScale(calendarFontScale);
-
-    for (std::uint32_t i = 1; i <= 12; ++i)
-    {
-        for (std::uint32_t j = 1; j <= 31; ++j)
-        {
-            const auto curr_date = std::chrono::year_month_day(
-                std::chrono::year(todays_date.year()),
-                std::chrono::month(i),
-                std::chrono::day(j));
             if (!curr_date.ok())
                 break;
 
-            if (j != 1)
-                ImGui::SameLine();
-            if (j == 1)
-                ImGui::Text("%s", fmt::format("{:.3}", months[i - 1]).c_str());
+            if (ImGui::Selectable(monthNames[month_idx - 1].data(),
+                                  month_idx == selectedDay))
+            {
+                selectedMonth = month_idx;
+                selectedDate = curr_date;
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::PopItemWidth();
+    ImGui::SameLine();
+    ImGui::PushItemWidth(60);
+
+    if (ImGui::BeginCombo("##year", std::to_string(selectedYear).data()))
+    {
+        for (std::int32_t year_idx = minYear; year_idx <= maxYear; ++year_idx)
+        {
+            const auto curr_date =
+                std::chrono::year_month_day(std::chrono::year(year_idx),
+                                            std::chrono::month(selectedMonth),
+                                            std::chrono::day(selectedDay));
+
+            if (!curr_date.ok())
+                break;
+
+            if (ImGui::Selectable(std::to_string(year_idx).data(),
+                                  year_idx == selectedYear))
+            {
+                selectedYear = year_idx;
+                selectedDate = curr_date;
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::PopItemWidth();
+
+    if (ImGui::Button("Add Meeting"))
+        addMeetingWindowOpen = true;
+}
+
+void Calender::DrawCalender()
+{
+    const auto child_size = ImVec2(ImGui::GetContentRegionAvail().x, 400.0F);
+    ImGui::BeginChild("###calender", child_size, false);
+
+    const auto original_font_size = ImGui::GetFontSize();
+    ImGui::SetWindowFontScale(calenderFontSize);
+
+    const auto curr_time =
+        std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now());
+    const auto todays_date = std::chrono::year_month_day(curr_time);
+
+    const auto y = selectedYear;
+    for (std::int32_t m = 1; m <= 12; ++m)
+    {
+        ImGui::Text("%s", fmt::format("{:.3}", monthNames[m - 1]).data());
+
+        for (std::int32_t d = 1; d <= 31; ++d)
+        {
+            const auto iteration_date =
+                std::chrono::year_month_day(std::chrono::year(y),
+                                            std::chrono::month(m),
+                                            std::chrono::day(d));
+
+            if (!iteration_date.ok())
+                break;
+
             ImGui::SameLine();
-            ImGui::PushID(j);
 
-            ImVec4 textColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-
-            if (meetings.contains(curr_date))
-                textColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f); // red
-            if (curr_date == todays_date)
-                textColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f); // green
-            if (selected_date == curr_date)
-                textColor = ImVec4(0.0f, 0.0f, 1.0f, 1.0f); // blue
-
-            ImGui::PushStyleColor(ImGuiCol_Text, textColor);
-            ImGui::Text("%s", std::to_string(j).c_str());
-            ImGui::PopStyleColor();
+            if (iteration_date == todays_date)
+                ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), "%d", d);
+            else if (iteration_date == selectedDate)
+                ImGui::TextColored(ImVec4(0.0F, 0.0F, 1.0F, 1.0F), "%d", d);
+            else if (meetings.contains(iteration_date))
+                ImGui::TextColored(ImVec4(1.0F, 0.0F, 0.0F, 1.0F), "%d", d);
+            else
+                ImGui::Text("%d", d);
 
             if (ImGui::IsItemClicked())
             {
-                selected_date =
-                    std::chrono::year_month_day{std::chrono::year(selectedYear),
-                                                std::chrono::month(i),
-                                                std::chrono::day(j)};
+                selectedDate = iteration_date;
                 UpdateSelectedDateVariables();
             }
-
-            ImGui::PopID();
         }
     }
 
-    ImGui::SetWindowFontScale(originalFontScale);
+    ImGui::SetWindowFontScale(original_font_size);
 
     ImGui::EndChild();
 }
 
-
 void Calender::DrawAddMeetingWindow()
 {
-    static char newMeetingName[128] = "output.txt";
+    static char meeting_name_buffer[128] = "...";
 
-    ImGui::Begin("Add Meeting",
-                 &addMeetingWindowOpen,
-                 ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::SetNextWindowSize(meetingWindowSize);
+    ImGui::SetNextWindowPos(meetingWindowPos);
+
+    ImGui::Begin("###addMeeting", &addMeetingWindowOpen, meetingWindowFlags);
 
     ImGui::Text("Add meeting to %d.%s.%d",
                 selectedDay,
-                months[selectedMonth - 1],
+                monthNames[selectedMonth - 1].data(),
                 selectedYear);
-    ImGui::InputText("Meeting Name", newMeetingName, sizeof(newMeetingName));
+
+    ImGui::InputText("Meeting Name",
+                     meeting_name_buffer,
+                     sizeof(meeting_name_buffer));
 
     if (ImGui::Button("Save"))
     {
-        const auto newMeeting = Meeting{newMeetingName};
-        meetings[selected_date].push_back(newMeeting);
-        std::memset(newMeetingName, 0, sizeof(newMeetingName));
+        meetings[selectedDate].push_back(Meeting{meeting_name_buffer});
+        std::memset(meeting_name_buffer, 0, sizeof(meeting_name_buffer));
         addMeetingWindowOpen = false;
     }
 
     ImGui::SameLine();
+
     if (ImGui::Button("Cancel"))
     {
         addMeetingWindowOpen = false;
@@ -285,10 +208,125 @@ void Calender::DrawAddMeetingWindow()
     ImGui::End();
 }
 
+void Calender::DrawMeetingList()
+{
+    if (!meetings.size())
+    {
+        ImGui::Text("No meetings at all.");
+        return;
+    }
+
+    ImGui::Text("Meetings on %d.%s.%d: ",
+                selectedDay,
+                monthNames[selectedMonth - 1].data(),
+                selectedYear);
+
+    if (!meetings.contains(selectedDate))
+    {
+        ImGui::Text("No meetings for this day.");
+        return;
+    }
+
+    if (meetings[selectedDate].empty())
+    {
+        ImGui::Text("No meetings for this day.");
+        return;
+    }
+
+    for (const auto &meeting : meetings[selectedDate])
+    {
+        ImGui::BulletText("%s", meeting.name.data());
+
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+        {
+            std::erase(meetings[selectedDate], meeting);
+            if (meetings[selectedDate].size() == 0)
+                meetings.erase(selectedDate);
+            return;
+        }
+    }
+}
+
+void Calender::LoadMeetingsFromFile(std::string_view filename)
+{
+    auto in = std::ifstream(filename.data(), std::ios::binary);
+
+    if (!in || !in.is_open())
+        return;
+
+    auto num_meetings = std::size_t{0};
+    in.read(reinterpret_cast<char *>(&num_meetings), sizeof(num_meetings));
+
+    for (std::size_t i = 0; i < num_meetings; ++i)
+    {
+        auto date = std::chrono::year_month_day{};
+        in.read(reinterpret_cast<char *>(&date), sizeof(date));
+
+        auto num_meetings_on_that_date = std::size_t{0};
+        in.read(reinterpret_cast<char *>(&num_meetings_on_that_date),
+                sizeof(num_meetings_on_that_date));
+
+        for (std::size_t j = 0; j < num_meetings_on_that_date; ++j)
+        {
+            auto meeting = Meeting::Deserialize(in);
+            meetings[date].push_back(meeting);
+        }
+    }
+
+    in.close();
+}
+
+void Calender::SaveMeetingsToFile(std::string_view filename)
+{
+    auto out = std::ofstream(filename.data(), std::ios::binary);
+
+    if (!out || !out.is_open())
+        return;
+
+    const auto meetings_count = meetings.size();
+    out.write(reinterpret_cast<const char *>(&meetings_count),
+              sizeof(meetings_count));
+
+    for (const auto &[date, meeting_vec] : meetings)
+    {
+        out.write(reinterpret_cast<const char *>(&date), sizeof(date));
+
+        const auto meetings_count_on_that_date = meeting_vec.size();
+        out.write(reinterpret_cast<const char *>(&meetings_count_on_that_date),
+                  sizeof(meetings_count_on_that_date));
+
+        for (const auto &meeting : meeting_vec)
+            meeting.Serialize(out);
+    }
+
+    out.close();
+}
+
+void Calender::Meeting::Serialize(std::ofstream &out) const
+{
+    const auto name_length = name.size();
+    out.write(reinterpret_cast<const char *>(&name_length),
+              sizeof(name_length));
+    out.write(name.data(), static_cast<std::streamsize>(name.size()));
+}
+
+Calender::Meeting Calender::Meeting::Deserialize(std::ifstream &in)
+{
+    auto meeting = Meeting{};
+    auto name_length = std::size_t{0};
+
+    in.read(reinterpret_cast<char *>(&name_length), sizeof(name_length));
+    meeting.name.resize(name_length);
+
+    in.read(meeting.name.data(), static_cast<std::streamsize>(name_length));
+
+    return meeting;
+}
+
 void Calender::UpdateSelectedDateVariables()
 {
-    selectedDay = static_cast<int>(selected_date.day().operator unsigned int());
+    selectedDay = static_cast<int>(selectedDate.day().operator unsigned int());
     selectedMonth =
-        static_cast<int>(selected_date.month().operator unsigned int());
-    selectedYear = static_cast<int>(selected_date.year());
+        static_cast<int>(selectedDate.month().operator unsigned int());
+    selectedYear = static_cast<int>(selectedDate.year());
 }

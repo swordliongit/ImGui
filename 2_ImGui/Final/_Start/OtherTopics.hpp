@@ -2,11 +2,13 @@
 
 #include <string_view>
 
-class OtherTopics
+#include "WindowBase.hpp"
+
+class OtherTopics : public WindowBase
 {
 public:
     OtherTopics(){};
     ~OtherTopics(){};
 
-    void Draw(std::string_view label);
+    void Draw(std::string_view label, bool *open = nullptr) final;
 };

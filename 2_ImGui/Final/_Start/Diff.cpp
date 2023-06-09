@@ -5,19 +5,38 @@
 #include <string_view>
 #include <vector>
 
-#include <imgui.h>
-
 #include <fmt/format.h>
+#include <imgui.h>
+#include <imgui_stdlib.h>
 #include <implot.h>
 
 #include "Diff.hpp"
 
-void DiffViewer::Draw(std::string_view label)
+void DiffViewer::Draw(std::string_view label, bool *open)
 {
-    ImGui::Begin(label.data());
+    ImGui::SetNextWindowPos(mainWindowPos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(mainWindowSize, ImGuiCond_Always);
 
+    ImGui::Begin(label.data(), open, mainWindowFlags);
+
+    DrawSelection();
+    DrawDiffView();
+    DrawStats();
+
+    ImGui::End();
+}
+
+void DiffViewer::DrawSelection()
+{
     ImGui::InputText("Left", &filePath1);
+    ImGui::SameLine();
+    if (ImGui::Button("Save###Left"))
+        SaveFileContent(filePath1, fileContent1);
+
     ImGui::InputText("Right", &filePath2);
+    ImGui::SameLine();
+    if (ImGui::Button("Save###Right"))
+        SaveFileContent(filePath2, fileContent2);
 
     if (ImGui::Button("Compare"))
     {
@@ -26,23 +45,15 @@ void DiffViewer::Draw(std::string_view label)
 
         CreateDiff();
     }
+}
 
-    ImGui::Text("%s", filePath1.data());
-    ImGui::SameLine();
-    if (ImGui::Button("Save###Left"))
-    {
-        SaveFileContent(filePath1, fileContent1);
-    }
-    ImGui::SameLine();
-    ImGui::Text("%s", filePath2.data());
-    ImGui::SameLine();
-    if (ImGui::Button("Save###Right"))
-    {
-        SaveFileContent(filePath2, fileContent2);
-    }
-
-    const auto parent_size = ImVec2(ImGui::GetContentRegionAvail().x, 400.0F);
-    const auto child_size = ImVec2(parent_size.x / 2.0F - 40.0F, parent_size.y);
+void DiffViewer::DrawDiffView()
+{
+    constexpr static auto swap_width = 40.0F;
+    const auto parent_size = ImVec2(ImGui::GetContentRegionAvail().x, 500.0F);
+    const auto child_size =
+        ImVec2(parent_size.x / 2.0F - swap_width, parent_size.y);
+    const auto swap_size = ImVec2(swap_width, child_size.y);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0F, 0.0F));
 
@@ -50,7 +61,7 @@ void DiffViewer::Draw(std::string_view label)
 
     if (ImGui::BeginChild("Diff1", child_size, false))
     {
-        for (std::size_t i = 0; i < fileContent1.size(); i++)
+        for (std::size_t i = 0; i < fileContent1.size(); ++i)
         {
             if (!diffResult1[i].empty())
             {
@@ -63,16 +74,15 @@ void DiffViewer::Draw(std::string_view label)
                 ImGui::Text("%s", fileContent1[i].data());
             }
         }
-
-        ImGui::EndChild();
     }
+    ImGui::EndChild();
 
     ImGui::SameLine();
 
-    const auto line_heihgt = ImGui::GetTextLineHeightWithSpacing();
-    const auto button_size = ImVec2(15.0F, line_heihgt);
+    const auto line_height = ImGui::GetTextLineHeightWithSpacing();
+    const auto button_size = ImVec2(15.0F, line_height);
 
-    if (ImGui::BeginChild("Swap", ImVec2(80.0F, child_size.y), true))
+    if (ImGui::BeginChild("Swap", swap_size, true))
     {
         for (std::size_t i = 0; i < diffResult1.size(); i++)
         {
@@ -103,13 +113,11 @@ void DiffViewer::Draw(std::string_view label)
             }
             else
             {
-                const auto cursor_pos = ImGui::GetCursorPosY();
-                ImGui::SetCursorPosY(cursor_pos + line_heihgt);
+                ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_height);
             }
         }
-
-        ImGui::EndChild();
     }
+    ImGui::EndChild();
 
     ImGui::SameLine();
 
@@ -128,59 +136,56 @@ void DiffViewer::Draw(std::string_view label)
                 ImGui::Text("%s", fileContent2[i].data());
             }
         }
-
-        ImGui::EndChild();
     }
+    ImGui::EndChild();
 
     ImGui::EndChild();
 
     ImGui::PopStyleVar();
+}
 
-    auto diff_lines_count = 0U;
+void DiffViewer::DrawStats()
+{
+    auto diff_lines_count = std::size_t{0};
     for (const auto &line : diffResult1)
     {
         if (!line.empty())
             ++diff_lines_count;
     }
 
-    ImGui::Text("Diff lines count: %d", diff_lines_count);
-
-    ImGui::End();
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 20.0F);
+    ImGui::Text("Diff lines count: %u", diff_lines_count);
 }
 
 DiffViewer::FileContent DiffViewer::LoadFileContent(std::string_view file_path)
 {
     auto content = FileContent{};
-    auto in = std::ifstream(file_path.data());
+    auto in = std::ifstream{file_path.data()};
 
     if (in.is_open())
     {
         auto line = std::string{};
         while (std::getline(in, line))
-        {
             content.push_back(line);
-        }
-
-        in.close();
     }
+
+    in.close();
 
     return content;
 }
 
 void DiffViewer::SaveFileContent(std::string_view file_path,
-                                 const FileContent &content)
+                                 FileContent &file_content)
 {
-    auto out = std::ofstream(file_path.data());
+    auto out = std::ofstream{file_path.data()};
 
     if (out.is_open())
     {
-        for (const auto &line : content)
-        {
+        for (const auto &line : file_content)
             out << line << '\n';
-        }
-
-        out.close();
     }
+
+    out.close();
 }
 
 void DiffViewer::CreateDiff()
@@ -191,7 +196,7 @@ void DiffViewer::CreateDiff()
     const auto max_num_lines =
         std::max(fileContent1.size(), fileContent2.size());
 
-    for (std::size_t i = 0; i < max_num_lines; i++)
+    for (std::size_t i = 0; i < max_num_lines; ++i)
     {
         const auto line1 = i < fileContent1.size() ? fileContent1[i] : "EMPTY";
         const auto line2 = i < fileContent2.size() ? fileContent2[i] : "EMPTY";

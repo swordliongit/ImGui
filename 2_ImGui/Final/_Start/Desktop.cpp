@@ -1,34 +1,63 @@
+#include <exception>
+#include <iostream>
 #include <string_view>
-
-#include <imgui.h>
+#include <tuple>
 
 #include <fmt/format.h>
+#include <imgui.h>
 #include <implot.h>
 
 #include "Desktop.hpp"
+#include "UiHelpers.hpp"
 
-void Desktop::Draw(std::string_view label)
+void Desktop::Draw(std::string_view label, bool *)
 {
-    constexpr auto window_flags =
-        (ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-         ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-         ImGuiWindowFlags_NoScrollWithMouse);
-    static auto open_taskbar = false;
+    ImGui::SetNextWindowSize(mainWindowSize);
+    ImGui::SetNextWindowPos(mainWindowPos);
 
-    ImGui::SetNextWindowSize(ImVec2(1280.0F, 680.0F), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(0.0F, 0.0F), ImGuiCond_Always);
+    ImGui::Begin(label.data(),
+                 nullptr,
+                 (mainWindowFlags | ImGuiWindowFlags_NoInputs |
+                  ImGuiWindowFlags_NoTitleBar));
 
-    ImGui::Begin(label.data(), NULL, window_flags);
+    DrawBackground();
+    DrawDesktop();
+    DrawTaskbar();
 
+    ImGui::End();
+}
+
+void Desktop::DrawBackground()
+{
+    ImGui::SetCursorPos(ImVec2(0.0F, 0.0F));
+    const auto image_filepath =
+        fmt::format("{}{}", PROJECT_PATH, "/images/bg.png");
+    LoadAndDisplayImage(image_filepath);
+    ImGui::SetCursorPos(ImVec2(0.0F, 0.0F));
+}
+
+void Desktop::DrawDesktop()
+{
     for (auto &icon : icons)
         icon.Draw();
+}
+
+void Desktop::DrawTaskbar()
+{
+    constexpr static auto button_flags =
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+        ImGuiWindowFlags_NoScrollWithMouse;
+
+    static auto open_taskbar = false;
 
     ImGui::SetNextWindowPos(ImVec2(0.0F, 680.0F), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(1280.0F, 40.0F), ImGuiCond_Always);
 
-    ImGui::Begin("Taskbar", NULL, window_flags);
+    ImGui::Begin("Taskbar", NULL, button_flags);
 
-    if (ImGui::Button("All Icons", ImVec2(100, 30)))
+    ImGui::SetCursorPosX(0.0F);
+    if (ImGui::Button("All Icons", ImVec2(100.0F, 30.0F)))
     {
         ImGui::OpenPopup("My Programs");
         open_taskbar = true;
@@ -39,12 +68,21 @@ void Desktop::Draw(std::string_view label)
 
     ImGui::SameLine();
 
-    ImGui::SetCursorPosX(ImGui::GetContentRegionAvail().x);
+    static auto theme_open = false;
+    if (ImGui::Button("Theme", ImVec2(100.0F, 30.0F)) || theme_open)
+    {
+        theme_open = true;
+        DrawColorsSettings(&theme_open);
+    }
+
+    ImGui::SameLine();
+
+    ImGui::SetCursorPosX(mainWindowSize.x - 100.0F);
 
     static auto clock_open = false;
     clock.GetTime();
     const auto time = fmt::format("{}:{}", clock.hrs, clock.mins);
-    if (ImGui::Button(time.data(), ImVec2(100, 30)) || clock_open)
+    if (ImGui::Button(time.data(), ImVec2(100.0F, 30.0F)) || clock_open)
     {
         clock.Draw("clockWindow");
         clock_open = true;
@@ -53,26 +91,26 @@ void Desktop::Draw(std::string_view label)
         clock_open = false;
 
     ImGui::End();
-
-    ImGui::End();
 }
 
 void Desktop::ShowIconList(bool *open)
 {
+    const auto icon_count = static_cast<float>(icons.size());
     const auto selectable_height = ImGui::GetTextLineHeightWithSpacing();
-    const auto popup_height = selectable_height * numIcons + 40.0F;
+    const auto popup_height = selectable_height * icon_count + 40.0F;
 
     ImGui::SetNextWindowPos(ImVec2(0.0F, 680.0F - popup_height),
                             ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(200.0F, popup_height), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(100.0F, popup_height), ImGuiCond_Always);
 
-    if (ImGui::BeginPopupModal("My Programs", open))
+    if (ImGui::BeginPopupModal("My Programs", open, ImGuiWindowFlags_NoResize))
     {
         for (auto &icon : icons)
         {
             if (ImGui::Selectable(icon.label.data()))
             {
                 icon.popupOpen = true;
+                icon.base->Draw(icon.label, &icon.popupOpen);
                 ImGui::CloseCurrentPopup();
             }
         }
@@ -83,38 +121,19 @@ void Desktop::ShowIconList(bool *open)
 
 void Desktop::Icon::Draw()
 {
-    const auto label_popup = fmt::format("Icon Popop Window##{}", label);
+    constexpr static auto flags =
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
 
     ImGui::SetNextWindowPos(position, ImGuiCond_FirstUseEver);
+    ImGui::Begin(fmt::format("###{}", label).data(), nullptr, flags);
 
-    ImGui::Begin(label.data());
-
-    if (ImGui::Button(label.data(), ImVec2(100.0F, 50.0F)))
+    if (ImGui::Button(label.data(), ImVec2(100.0F, 50.0F)) || popupOpen)
     {
-        ++clickCount;
+        popupOpen = true;
+        base->Draw(label, &popupOpen);
     }
 
     ImGui::End();
-
-    if (clickCount >= 1 || popupOpen)
-    {
-        ImGui::OpenPopup(label_popup.data());
-        clickCount = 0;
-        popupOpen = true;
-    }
-
-    if (ImGui::BeginPopupModal(label_popup.data(), &popupOpen))
-    {
-        ImGui::Text("Hi");
-
-        if (ImGui::Button("Close"))
-        {
-            ImGui::CloseCurrentPopup();
-            popupOpen = false;
-        }
-
-        ImGui::EndPopup();
-    }
 }
 
 void render(Desktop &window_class)
