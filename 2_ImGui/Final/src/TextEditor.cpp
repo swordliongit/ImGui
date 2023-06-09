@@ -24,6 +24,7 @@ void TextEditor::Draw(std::string_view label, bool *open)
                  open,
                  mainWindowFlags | ImGuiWindowFlags_MenuBar);
 
+    SettingsMenuBar();
     DrawMenu();
     DrawContent();
     DrawInfo();

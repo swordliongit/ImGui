@@ -196,7 +196,8 @@ void FileExplorer::deleteFilePopup()
     }
 }
 
-bool FileExplorer::renameFile(const fs::path &old_path, const fs::path &new_path)
+bool FileExplorer::renameFile(const fs::path &old_path,
+                              const fs::path &new_path)
 {
     try
     {

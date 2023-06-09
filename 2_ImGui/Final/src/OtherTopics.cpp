@@ -38,13 +38,17 @@ void OtherTopics::Draw(std::string_view label, bool *open)
         if (ImGui::BeginTabItem("Sizes1"))
         {
             ImGui::SeparatorText("Main11");
+            ImGui::Text("1");
             ImGui::SeparatorText("Main21");
+            ImGui::Text("2");
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Sizes2"))
         {
             ImGui::SeparatorText("Main12");
+            ImGui::Text("1");
             ImGui::SeparatorText("Main22");
+            ImGui::Text("2");
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
