@@ -78,8 +78,7 @@ void AdvCalc::DrawPlot()
     ImPlot::EndPlot();
 }
 
-AdvCalc::Function AdvCalc::functionNameMapping(
-    std::string_view function_name)
+AdvCalc::Function AdvCalc::functionNameMapping(std::string_view function_name)
 {
     if (std::string_view{"sin(x)"} == function_name)
         return AdvCalc::Function::SIN;

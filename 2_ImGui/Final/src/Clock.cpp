@@ -54,8 +54,8 @@ void Clock::DrawCircle(const float radius)
 }
 
 void Clock::DrawClockHand(const float radius,
-                                const float theta,
-                                const ImColor color)
+                          const float theta,
+                          const ImColor color)
 {
     const auto c = std::cos(theta); // x
     const auto s = std::sin(theta); // y
