@@ -41,8 +41,8 @@ public:
         "November",
         "December",
     };
-    static constexpr auto minYear = 2000U;
-    static constexpr auto maxYear = 2038U;
+    static constexpr auto minYear = std::int32_t{2000};
+    static constexpr auto maxYear = std::int32_t{2038};
 
     struct Meeting
     {

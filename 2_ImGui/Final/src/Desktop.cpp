@@ -54,7 +54,7 @@ void Desktop::DrawTaskbar()
     ImGui::SetNextWindowPos(ImVec2(0.0F, 680.0F), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(1280.0F, 40.0F), ImGuiCond_Always);
 
-    ImGui::Begin("Taskbar", NULL, button_flags);
+    ImGui::Begin("Taskbar", nullptr, button_flags);
 
     ImGui::SetCursorPosX(0.0F);
     if (ImGui::Button("All Icons", ImVec2(100.0F, 30.0F)))

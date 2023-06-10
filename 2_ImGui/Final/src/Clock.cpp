@@ -68,7 +68,7 @@ void Clock::DrawAllHourStrokes()
 {
     for (std::uint32_t hr = 0; hr < 12; ++hr)
     {
-        const auto theta = (hr * ((2.0F * PI) / 12.0F)) + offset;
+        const auto theta = (static_cast<float>(hr) * ((2.0F * PI) / 12.0F)) + offset;
         const auto c = std::cos(theta); // x
         const auto s = std::sin(theta); // y
 
@@ -89,7 +89,7 @@ void Clock::DrawAllMinuteStrokes()
 {
     for (std::uint32_t min = 0; min < 60; ++min)
     {
-        const auto theta = (min * ((2.0F * PI) / 60.0F)) + offset;
+        const auto theta = (static_cast<float>(min) * ((2.0F * PI) / 60.0F)) + offset;
         const auto c = std::cos(theta); // x
         const auto s = std::sin(theta); // y
 

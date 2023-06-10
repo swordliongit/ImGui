@@ -118,7 +118,7 @@ void FileExplorer::DrawFilter()
     if (std::strlen(extension_filter) == 0)
         return;
 
-    auto filtered_file_count = std::size_t{0};
+    auto filtered_file_count = std::uint32_t{0};
     for (const auto &entry : fs::directory_iterator(currentPath))
     {
         if (!fs::is_regular_file(entry))

@@ -146,7 +146,7 @@ void DiffViewer::DrawDiffView()
 
 void DiffViewer::DrawStats()
 {
-    auto diff_lines_count = std::size_t{0};
+    auto diff_lines_count = std::uint32_t{0};
     for (const auto &line : diffResult1)
     {
         if (!line.empty())

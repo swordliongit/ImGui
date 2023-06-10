@@ -309,7 +309,7 @@ void CsvEditor::LoadFromCsvFile(std::string_view filename)
     data.clear();
 
     auto line = std::string{};
-    auto num_rows = 0U;
+    auto num_rows = std::int32_t{0};
 
     while (std::getline(in, line))
     {

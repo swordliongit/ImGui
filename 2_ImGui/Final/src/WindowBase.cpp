@@ -41,7 +41,7 @@ void WindowBase::SettingsMenuBar()
     {
         if (ImGui::BeginMenu("Settings"))
         {
-            ImGui::MenuItem("Theme", NULL, &theme_menu_open);
+            ImGui::MenuItem("Theme", nullptr, &theme_menu_open);
             ImGui::EndMenu();
         }
 

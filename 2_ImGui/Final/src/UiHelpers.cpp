@@ -16,13 +16,15 @@ std::tuple<GLuint, std::uint32_t, std::uint32_t> loadTexture(
     const char *filename)
 {
     std::vector<unsigned char> data;
-    std::uint32_t width, height;
+    std::uint32_t width = 0U;
+    std::uint32_t height = 0U;
+
     const auto error = lodepng::decode(data, width, height, filename);
 
     if (error)
         throw "Error loading image";
 
-    GLuint texture;
+    GLuint texture = 0U;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
