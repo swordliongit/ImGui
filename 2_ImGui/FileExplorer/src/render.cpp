@@ -17,6 +17,10 @@ void WindowClass::Draw(std::string_view label)
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
     constexpr static auto main_window_size = ImVec2(1280.0F, 720.0F);
     constexpr static auto main_window_pos = ImVec2(0.0F, 0.0F);
+    constexpr static auto upper_section_height = 50.0F;
+    constexpr static auto lower_section_height = 100.0F;
+    constexpr static auto content_height =
+        main_window_size.y - lower_section_height - upper_section_height;
 
     ImGui::SetNextWindowSize(main_window_size);
     ImGui::SetNextWindowPos(main_window_pos);
@@ -25,8 +29,17 @@ void WindowClass::Draw(std::string_view label)
 
     DrawMenu();
     ImGui::Separator();
+
+    ImGui::SetNextWindowSize(ImVec2(main_window_size.x, content_height));
+    ImGui::SetNextWindowPos(ImVec2(main_window_pos.x, upper_section_height));
+    ImGui::Begin(fmt::format("##innerContent{}", currentPath.string()).c_str(),
+                 nullptr,
+                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
     DrawContent();
-    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 100.0F);
+    ImGui::End();
+
+    ImGui::SetCursorPosY(ImGui::GetWindowHeight() - lower_section_height);
     ImGui::Separator();
     DrawActions();
     ImGui::Separator();
