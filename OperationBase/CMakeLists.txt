@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(
-    "Current"
+    "OperationBase"
     VERSION 1.0.0
     LANGUAGES C CXX)
 
@@ -25,7 +25,7 @@ include(ConfigSafeGuards)
 
 # set (VCPKG_DIR ${CMAKE_SOURCE_DIR}/external/vcpkg)
 # you can set any other vcpkg installation on your system
-set (VCPKG_DIR "C:/Users/aslan/Desktop/Workspace/Programming/Cpp/vcpkg")
+set (VCPKG_DIR "C:/Workspace/Programming/Cpp/vcpkg")
 include(${VCPKG_DIR}/scripts/buildsystems/vcpkg.cmake)
 
 find_package(fmt CONFIG REQUIRED)
@@ -33,6 +33,9 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(implot CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
+
+find_package(Python3 COMPONENTS Development REQUIRED)
+# include_directories(${Python3_INCLUDE_DIRS})
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
@@ -53,3 +56,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
 target_link_libraries(${PROJECT_NAME} PRIVATE OpenGL::GL)
 target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui)
 target_link_libraries(${PROJECT_NAME} PRIVATE implot::implot)
+target_link_libraries(${PROJECT_NAME} PRIVATE Python3::Python)
