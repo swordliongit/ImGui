@@ -14,8 +14,6 @@
 
 #include "render.hpp"
 
-#include <python_bridge.hpp>
-
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) &&                                 \
     !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
@@ -28,13 +26,15 @@ namespace fs = std::filesystem;
 
 static void glfw_error_callback(int error, const char *description);
 
-void start_cycle() {
+void start_cycle()
+{
     glfwPollEvents();
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
 }
 
-void end_cycle(GLFWwindow *const window) {
+void end_cycle(GLFWwindow *const window)
+{
     const auto clear_color =
         ImVec4(30.0F / 255.0F, 30.0F / 255.0F, 30.0F / 255.0F, 1.00f);
     int display_w = 0;
@@ -50,11 +50,12 @@ void end_cycle(GLFWwindow *const window) {
     glfwSwapBuffers(window);
 }
 
-int main(int, char **) {
-    // int test = CallPython();
+int main(int, char **)
+{
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit()) {
+    if (!glfwInit())
+    {
         return 1;
     }
 
@@ -85,7 +86,8 @@ int main(int, char **) {
                                     "Gui",
                                     nullptr,
                                     nullptr);
-    if (window == nullptr) {
+    if (window == nullptr)
+    {
         return 1;
     }
     glfwMakeContextCurrent(window);
@@ -106,7 +108,8 @@ int main(int, char **) {
 
     WindowClass window_obj;
 
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(window))
+    {
         start_cycle();
 
         ImGui::NewFrame();
@@ -129,6 +132,7 @@ int main(int, char **) {
     return 0;
 }
 
-void glfw_error_callback(int error, const char *description) {
+void glfw_error_callback(int error, const char *description)
+{
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
